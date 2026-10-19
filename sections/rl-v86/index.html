@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>V8.6 Session-Safe V7.2 Dashboard</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body class="theme-graphite">
+<div id="app">
+  <header class="top">
+    <div>
+      <div class="title">V8 AGENT · V8.6 SESSION-SAFE V7.2</div>
+      <div class="sub"><span class="chip frozen">MODEL: V8.6 (FROZEN)</span><span>Status: <b id="statusText">HISTORY</b></span><span id="conn" class="chip warn">OFFLINE</span></div>
+    </div>
+    <div class="controls">
+      <div class="seg"><button id="historyBtn" class="on">HISTORY</button><button id="forecastBtn">FORECAST</button></div>
+      <label>DATA LINK<select id="dataSource" disabled><option>OrderFlow Current Data</option></select></label>
+      <label>Symbol<select id="symbol"><option>GCv1</option></select></label>
+      <label>Timeframe<select id="timeframe"><option value="1">1 Min</option><option value="3">3 Min</option><option value="5">5 Min</option></select></label>
+      <button id="themeBtn" class="iconbtn" title="Switch dashboard background">◐</button>
+      <button id="syncBtn" class="iconbtn" title="Sync currently loaded OrderFlow data">↻</button>
+      <span class="live-dot"></span>
+    </div>
+  </header>
+
+  <section class="kpis">
+    <div class="kpi"><span>TOTAL RETURN</span><strong class="pos">+9.06%</strong><small>$905.69</small></div>
+    <div class="kpi"><span>PROFIT FACTOR</span><strong class="pos">1.656</strong></div>
+    <div class="kpi"><span>MAX DRAWDOWN</span><strong class="neg">−2.87%</strong></div>
+    <div class="kpi"><span>WIN RATE</span><strong>52.50%</strong></div>
+    <div class="kpi"><span>CLOSED TRADES</span><strong>160</strong></div>
+    <div class="kpi"><span>SESSIONS</span><strong>11</strong><small class="pos">Profitable 7 (63.6%)</small></div>
+    <div class="kpi"><span>GATE ACCEPT RATE</span><strong>5.99%</strong></div>
+    <div class="kpi"><span>LONG P&amp;L</span><strong class="pos">905.69</strong></div>
+  </section>
+
+  <main class="layout">
+    <aside class="left panel">
+      <div class="group">
+        <h3>FULL PRICE SUMMARY HISTORY</h3>
+        <div class="linkStatus"><span id="sourceDot" class="sourceDot"></span><b id="sourceTab">Waiting for full Price Summary history…</b></div>
+        <div id="fileName" class="muted">Open/load data in Pro, TAQ Pro, or TAS Regime.</div>
+        <div class="sourceStats">
+          <span>Rows <b id="linkedRows">0</b></span>
+          <span>Bars <b id="linkedBars">0</b></span>
+          <span>Last <b id="linkedLast">—</b></span>
+        </div>
+        <button id="syncDataBtn" class="wide">SYNC FULL HISTORY</button>
+      </div>
+      <div class="group">
+        <h3>DATE RANGE</h3>
+        <div class="row"><input id="dateFrom" type="date"><span>to</span><input id="dateTo" type="date"></div>
+      </div>
+      <div class="group"><h3>SESSION FILTER</h3><select id="sessionFilter"><option value="all">All Sessions</option></select></div>
+      <div class="group">
+        <h3>SIGNAL FILTER</h3>
+        <label class="check"><input type="checkbox" data-sig="BUY_ENTRY" checked><i class="arr up green"></i>Buy Entry <b id="nBuy">0</b></label>
+        <label class="check"><input type="checkbox" data-sig="BUY_EXIT" checked><i class="arr down red"></i>Buy Exit <b id="nBuyExit">0</b></label>
+        <label class="check"><input type="checkbox" data-sig="SELL_ENTRY" checked><i class="arr down red"></i>Sell Entry <b id="nSell">0</b></label>
+        <label class="check"><input type="checkbox" data-sig="SELL_EXIT" checked><i class="arr up green"></i>Sell Exit <b id="nSellExit">0</b></label>
+      </div>
+      <div class="group">
+        <h3>DISPLAY OPTIONS</h3>
+        <label class="check"><input id="showSignals" type="checkbox" checked>Show Signals</label>
+        <label class="check"><input id="showForecast" type="checkbox" checked>Show Forecast Area</label>
+        <label class="check"><input id="showVolume" type="checkbox" checked>Show Volume</label>
+        <label class="check"><input id="showIndicators" type="checkbox" checked>Show Indicator Panel</label>
+      </div>
+      <div class="group">
+        <h3>FORECAST SETTINGS</h3>
+        <label>Forecast Horizon <output id="horizonOut">50</output></label>
+        <input id="horizon" type="range" min="10" max="150" value="50">
+        <label>Probability Threshold <output>0.55</output></label>
+        <input id="probThreshold" type="range" min="40" max="80" value="55">
+        <label>Hold Margin <output>0.045</output></label>
+        <input id="holdMargin" type="range" min="0" max="80" value="45">
+      </div>
+      <div class="group model">
+        <h3>MODEL INFO</h3>
+        <div>Model: V8.6 Session-Safe V7.2</div><div>Features: 64 selected</div>
+        <div>Train: 42 sessions</div><div>Validation: 8 sessions</div><div>Test: 11 sessions</div><div>Status: <b class="pos">FROZEN</b></div>
+      </div>
+      <div class="gate">VALIDATION GATE: PASS</div>
+    </aside>
+
+    <section class="center">
+      <div class="panel chartPanel">
+        <div class="panelHead"><b>CANDLESTICK CHART WITH SIGNALS</b>
+          <div class="legend"><span><i class="arr up green"></i>Buy Entry</span><span><i class="arr down red"></i>Buy Exit</span><span><i class="arr down red"></i>Sell Entry</span><span><i class="arr up green"></i>Sell Exit</span></div>
+        </div>
+        <canvas id="chart"></canvas>
+        <div id="tooltip" class="tooltip"></div>
+      </div>
+      <div class="bottomGrid">
+        <div class="panel tablePanel"><h3>RECENT SIGNALS</h3><div class="tableWrap"><table><thead><tr><th>Time</th><th>Type</th><th>Price</th><th>Prob</th><th>Regime</th></tr></thead><tbody id="signalsBody"></tbody></table></div></div>
+        <div class="panel tablePanel"><h3>SESSION PERFORMANCE</h3><div class="tableWrap"><table><thead><tr><th>Session</th><th>Return</th><th>PF</th><th>DD</th><th>Trades</th></tr></thead><tbody id="sessionBody"></tbody></table></div></div>
+        <div class="panel miniPanel"><h3>EQUITY CURVE (HELD-OUT)</h3><canvas id="equity"></canvas></div>
+      </div>
+    </section>
+
+    <aside class="right">
+      <div class="panel card"><h3>LIVE SIGNAL SUMMARY</h3><dl><dt>Last Signal</dt><dd id="lastSignal" class="pos">—</dd><dt>Time</dt><dd id="lastTime">—</dd><dt>Price</dt><dd id="lastPrice">—</dd><dt>Probability</dt><dd id="lastProb">—</dd><dt>Regime</dt><dd id="lastRegime">—</dd><dt>Quality</dt><dd>0.72</dd><dt>Efficiency</dt><dd>0.68</dd></dl></div>
+      <div class="panel card"><h3>FORECAST SUMMARY</h3><dl><dt>Horizon</dt><dd id="fHorizon">50 bars</dd><dt>Direction</dt><dd id="fDir" class="pos">UP</dd><dt>Target (Median)</dt><dd id="fTarget">—</dd><dt>Upper (80%)</dt><dd id="fUpper">—</dd><dt>Lower (20%)</dt><dd id="fLower">—</dd><dt>Confidence</dt><dd id="fConf">0.63</dd></dl></div>
+      <div class="panel card"><h3>PERFORMANCE (HELD-OUT)</h3><dl><dt>Return</dt><dd class="pos">+9.06%</dd><dt>Profit Factor</dt><dd class="pos">1.656</dd><dt>Max Drawdown</dt><dd class="neg">−2.87%</dd><dt>Win Rate</dt><dd>52.50%</dd><dt>Trades</dt><dd>160</dd><dt>Avg Win</dt><dd>1.02%</dd><dt>Avg Loss</dt><dd>−0.78%</dd></dl></div>
+    </aside>
+  </main>
+
+  <footer>DATA: 71 DAYS (TRAIN 42 / VALID 8 / TEST 11)<span>TIMEFRAME: <b id="footTf">1 MINUTE</b></span><span>SYMBOL: <b>GCv1</b></span><span>MODEL STATUS: <b class="pos">FROZEN</b></span><em>RISK WARNING: PAST PERFORMANCE IS NOT INDICATIVE OF FUTURE RESULTS.</em></footer>
+</div>
+<script src="script.js"></script>
+</body>
+</html>

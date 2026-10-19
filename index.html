@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="so">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISKRU TRADE ROBOT PRO</title>
+<link rel="stylesheet" href="shell.css">
+</head>
+<body>
+
+  <div class="cc-shell">
+
+    <header class="cc-topbar">
+      <div class="cc-brand">
+        <span class="cc-brand-mark">ITR</span>
+        <span class="cc-brand-text">ISKRU TRADE ROBOT PRO</span>
+      </div>
+
+      <div class="cc-topbar-right">
+        <div class="cc-view-toggle" id="cc-view-toggle" title="Auto detects your device. You can force Desktop or Mobile view manually.">
+          <button type="button" class="cc-view-btn" data-mode="auto">Auto</button>
+          <button type="button" class="cc-view-btn" data-mode="desktop">🖥 Desktop</button>
+          <button type="button" class="cc-view-btn" data-mode="mobile">📱 Mobile</button>
+        </div>
+
+        <div class="cc-divider"></div>
+
+        <label class="cc-switch" title="When on, opening a section opens it as a real browser tab instead of an embedded pane">
+          <input type="checkbox" id="cc-newtab-toggle">
+          <span class="cc-switch-track"><span class="cc-switch-thumb"></span></span>
+          <span class="cc-switch-label">New tab mode</span>
+        </label>
+
+        <div class="cc-divider"></div>
+
+        <div class="cc-status-cluster">
+          <div class="cc-status-pill" id="cc-uptime" title="How long this Command Center session has been open">
+            <span class="cc-status-dot"></span>
+            <span class="cc-status-label">Online</span>
+            <span class="cc-status-value" id="cc-uptime-value">00:00:00</span>
+          </div>
+          <div class="cc-status-pill cc-status-pill--clock" id="cc-clock-pill">
+            <span class="cc-status-value" id="cc-clock">--:--:--</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="cc-tabbar" id="cc-tabbar">
+      <!-- tabs injected by shell.js from SECTIONS config -->
+    </nav>
+
+    <main class="cc-workspace" id="cc-workspace">
+      <div class="cc-empty" id="cc-empty">
+        <div class="cc-empty-glyph">◧</div>
+        <p>Dooro tab si aad u furto section.</p>
+      </div>
+      <!-- one .cc-pane per section injected here, kept alive & toggled -->
+    </main>
+
+  </div>
+
+<script src="shell.js"></script>
+</body>
+</html>
