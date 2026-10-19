@@ -1,0 +1,1094 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>OrderFlow Trader TAQ Pro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+
+<!-- ADDED ONLY: Reviewer + Regime Engine tabs (no existing code changed) -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <link rel="stylesheet" href="styles.css?v=20261008-professional-candles-v1">
+</head>
+<body>
+<div id="tb">
+  <span id="tb-instr">XAUUSD · Gold</span>
+  <span id="tb-badge">LIVE</span>
+  <span id="dsrc" class="sim">● TAS Demo</span>
+  <button id="dsrc-exit" onclick="showIdleState()" title="Stop demo/sim and clear the chart back to Awaiting Data" style="background:#1a1010;border:1px solid #442222;color:#cc6666;padding:2px 7px;border-radius:3px;font-size:9px;cursor:pointer;font-family:inherit;flex-shrink:0;">✕ Exit / Clear</button>
+  <span id="fmt-badge"></span>
+  <span id="bar-timer">⏱ —</span>
+  <div class="sep"></div>
+  <div id="ct-wrap">
+    <button class="ct-b" id="ct-range" title="Fixed tick-size ladder for detailed footprint analysis" onclick="setMode('range')">Range</button>
+    <button class="ct-b on" id="ct-candle" title="Auto-fits visible price action; footprint levels may be visually grouped" onclick="setMode('candle')">Candle</button>
+  </div>
+  <span style="color:#555;font-size:9px">Levels:</span>
+  <select id="range-levels-top" onchange="setRangeLevels(+this.value)" title="Range mode price levels" style="width:48px"><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option><option value="9">9</option><option value="10" selected>10</option><option value="12">12</option><option value="13">13</option><option value="14">14</option><option value="15">15</option></select>
+  <div class="sep"></div>
+  <span style="color:#555;font-size:9px">Bars:</span>
+  <input type="number" id="bar-n" value="10" min="2" max="40" style="width:40px" onchange="rebuild()">
+  <div class="sep"></div>
+  <button class="tbtn on" id="b-poc">POC</button>
+  <button class="tbtn on" id="b-imb">Imbalance</button>
+  <button class="tbtn on" id="b-vwap">VWAP</button>
+  <button class="tbtn on" id="b-dlt">Δ Bar</button>
+  <button class="tbtn on" id="b-cdlt">Cum.Δ</button>
+  <button class="tbtn" id="b-flow" onclick="toggleFlowStrip()" title="Toggle Delta Divergence Flow strip">Flow</button>
+  <div class="sep"></div>
+  <button class="tbtn" id="b-ul" onclick="document.getElementById('fi').click()">📂 Excel/CSV</button>
+  <input type="file" id="fi" accept=".xlsx,.xlsm,.xls,.csv" multiple style="display:none">
+  <button class="tbtn" id="b-live" onclick="liveStart()" title="Re-read file automatically for new rows">🔴 Live</button>
+  <button class="tbtn" id="b-xw" onclick="xwToggle()" title="Connect to xlwings Python server">🔌 xlwings</button>
+  <button class="tbtn" id="b-ind" onclick="toggleIndPanel()">📐 Indicators</button>
+  <button class="tbtn" id="b-cfg" onclick="openCfg()">⚙ Settings</button>
+  <button class="tbtn" id="b-rst" onclick="rebuild()">↺</button>
+  <div class="sep"></div>
+  <label style="color:#555;font-size:9px;flex-shrink:0">🎨</label>
+  <select id="bg-select" onchange="applyBgTheme(this.value)" title="Background theme">
+    <option value="dark">Dark</option>
+    <option value="black">Black</option>
+    <option value="midnight">Midnight Blue</option>
+    <option value="charcoal">Charcoal</option>
+    <option value="darkgreen">Dark Green</option>
+    <option value="navy">Navy</option>
+    <option value="slate">Slate</option>
+    <option value="warm">Warm Dark</option>
+    <option value="light">Light</option>
+  </select>
+  <div class="sp"></div>
+  <span id="clk" style="color:#444;font-size:10px;white-space:nowrap"></span>
+</div>
+
+<div id="xw-panel">
+  <span id="xw-dot" class="closed"></span>
+  <span id="xw-status">🔌 xlwings: disconnected</span>
+  <span id="xw-filelist" style="color:#224466;font-size:9px;white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis;"></span>
+  <span id="xw-rowcount"></span><span id="xw-newrows"></span><span id="xw-err"></span>
+  <span style="flex:1"></span>
+  <input type="text" id="xw-url-input" value="ws://localhost:8766" spellcheck="false">
+  <button class="xw-btn" onclick="xwConnect()">↺ Reconnect</button>
+  <button class="xw-btn" onclick="xwSaveFile()" style="border-color:#006633;color:#00cc66;background:#001a0a;">💾 Save</button>
+  <span id="xw-save-status" style="font-size:9px;color:#336633;white-space:nowrap;"></span>
+  <button class="xw-btn stop" onclick="xwDisconnect()">■ Disconnect</button>
+</div>
+
+<div id="live-panel">
+  <span id="live-pulse-dot"></span>
+  <span id="live-status">Live: —</span>
+  <span id="live-rowcount"></span><span id="live-newrows"></span><span id="live-err"></span>
+  <span style="flex:1"></span>
+  <span id="live-interval-lbl">Poll: 2s</span>
+  <input type="range" class="sl" id="live-interval-sl" min="1" max="30" value="2" oninput="liveSetPollInterval(+this.value)">
+  <button class="live-btn" id="live-pause-btn" onclick="livePauseToggle()">⏸ Pause</button>
+  <button class="live-btn stop" onclick="liveStop()">■ Stop Live</button>
+</div>
+
+<div id="cp-bar"><span class="cp-lbl">Columns:</span></div>
+<div id="ind-active-bar"></div>
+
+<div id="ind-panel">
+  <div id="ind-topbar">
+    <span class="ind-title">📐 Indicators</span>
+    <input type="text" id="ind-search" placeholder="Search indicators…" oninput="indSearch(this.value)">
+    <button id="ind-close-btn" onclick="toggleIndPanel(false)">✕</button>
+  </div>
+  <div id="ind-body">
+    <div class="ind-col">
+      <div class="ind-col-hdr">Available <button onclick="indAddAll()">Add All</button></div>
+      <div class="ind-list" id="ind-available-list"></div>
+    </div>
+    <div class="ind-col">
+      <div class="ind-col-hdr">Configured (Active) <button onclick="indRemoveAll()">Remove All</button></div>
+      <div class="ind-list" id="ind-configured-list"></div>
+    </div>
+  </div>
+</div>
+
+<div id="main-tabs">
+  <button class="main-tab active" data-tab="chart"    onclick="switchTab('chart')">📊 Chart</button>
+  <button class="main-tab"        data-tab="tradelog" onclick="switchTab('tradelog')">📋 Trade Log</button>
+  <button class="main-tab"        data-tab="summary"  onclick="switchTab('summary')">📈 Price Summary</button>
+  <button class="main-tab"        data-tab="levels"   onclick="switchTab('levels')">🔢 Level Aggregator</button>
+  <button class="main-tab"        data-tab="lagr"     onclick="switchTab('lagr')">🔬 LA Pro</button>
+  <button class="main-tab"        data-tab="dfpairs"  onclick="switchTab('dfpairs')">⇄ Δ Flip Pairs</button>
+  <button class="main-tab"        data-tab="reviewer" onclick="switchTab('reviewer')">🧠 Reviewer</button>
+  <button class="main-tab"        data-tab="regime"   onclick="switchTab('regime')">🧭 Regime Engine</button>
+  <button class="main-tab" data-tab="v8agent" onclick="switchTab('v8agent')">🧠 V8 AGENT</button>
+</div>
+<div id="dt-filter-bar">
+  <label>🕐 Day/Time Filter</label>
+  <select id="dt-preset-select" onchange="dtPresetChange(this.value)">
+    <option value="custom">Custom</option>
+    <option value="full">Full Day</option>
+    <option value="trading">Trading Day (00:00–23:59)</option>
+    <option value="main">Main Session (08:30–17:00)</option>
+    <option value="rth">RTH (09:30–16:00)</option>
+    <option value="premarket">Pre Market (04:00–09:30)</option>
+    <option value="postmarket">Post Market (16:00–20:00)</option>
+    <option value="am">AM Session (00:00–12:00)</option>
+    <option value="pm">PM Session (12:00–23:59)</option>
+    <option value="prev_main">Previous Main Session</option>
+  </select>
+  <div class="sep"></div>
+  <label style="font-size:8px;color:#446;letter-spacing:.5px;">START</label>
+  <input type="datetime-local" id="dt-start" class="dt-fb-input" step="1" onchange="dtMarkCustom()">
+  <label style="font-size:8px;color:#446;letter-spacing:.5px;">END</label>
+  <input type="datetime-local" id="dt-end"   class="dt-fb-input" step="1" onchange="dtMarkCustom()">
+  <button class="dt-apply-btn" onclick="dtApply()">▶ Apply</button>
+  <span id="dt-filter-active-badge" style="display:none"></span>
+  <button id="dt-clear-btn" onclick="dtClear()" style="display:none">✕ Clear</button>
+  <span style="flex:1"></span>
+  <span id="dt-row-count" style="color:#446;font-size:9px;"></span>
+  <div class="sep" style="margin:0 4px;"></div>
+  <div class="font-size-ctrl">
+    <label>Font:</label>
+    <button class="fs-btn" onclick="changeFontSize(-1)" title="Decrease font size">−</button>
+    <span id="fs-val">11px</span>
+    <button class="fs-btn" onclick="changeFontSize(+1)" title="Increase font size">+</button>
+  </div>
+</div>
+<div id="tabs-outer">
+<div id="chart-pane" class="tab-pane active">
+<div id="main-wrap">
+  <div id="sidebar">
+    <div id="sb-scroll">
+    <div class="sb-s" style="margin-top:4px">Data</div>
+    <div class="sb-dual" id="src-toggle" style="margin-bottom:4px">
+      <button class="sb-big" id="src-btn-database" style="color:#8899aa;border-color:#2a3a4a;font-size:9px" onclick="itrSetDataSource('database')">🗄 DATABASE (DEFAULT)</button>
+      <button class="sb-big" id="src-btn-file" style="color:#88ccaa;border-color:#1e3a2a;font-size:9px" onclick="itrSetDataSource('file')">📁 FILE (MANUAL)</button>
+    </div>
+    <div class="sb-dz" id="sb-dz" onclick="document.getElementById('fi').click()" title="Select or drop multiple files (e.g. a day's 4-hour chunks) to load them as one continuous session">
+      <span style="font-size:13px">📁</span> Click or drop
+      <span style="color:#333;font-size:8px;display:block">.xlsx · .xlsm · .xls · .csv · multi-file OK</span>
+    </div>
+    <div class="sb-dual" style="margin-top:4px">
+      <button class="sb-big demo" onclick="loadDemo()">▶ Demo</button>
+      <button class="sb-big sim" onclick="startSim()">⚡ Sim</button>
+    </div>
+    <div class="sb-dual" style="margin-top:4px">
+      <button class="sb-big" style="color:#00cc44;border-color:#004422;font-size:9px" onclick="liveStart()">🔴 Live</button>
+      <button class="sb-big" style="color:#4488ff;border-color:#002266;font-size:9px" onclick="xwToggle()">🔌 xlwings</button>
+    </div>
+    <div class="sb-dual" style="margin-top:4px">
+      <button class="sb-big" id="wf-btn" style="color:#cc9900;border-color:#443300;font-size:9px" onclick="wfToggle()" title="Grant a folder once — auto-import matching Excel/CSV files">📁 Watch Folder</button>
+    </div>
+    <div id="wf-status" style="color:#556;font-size:8px;line-height:1.5;padding:2px 2px 4px;word-break:break-word"></div>
+    <input type="file" id="wf-fallback-input" webkitdirectory multiple style="display:none">
+    <div id="db-auto-status" style="color:#556;font-size:8px;line-height:1.5;padding:2px 2px 4px;word-break:break-word;min-height:36px;box-sizing:border-box"></div>
+    <div class="sb-s">Chart</div>
+    <div class="sb-ct">
+      <button class="sb-ct-b" id="sct-range" title="Fixed tick-size ladder for detailed footprint analysis" onclick="setMode('range')">Range</button>
+      <button class="sb-ct-b on" id="sct-candle" title="Auto-fits visible price action; footprint levels may be visually grouped" onclick="setMode('candle')">Candle</button>
+    </div>
+    <div style="font-size:8px;color:#556677;letter-spacing:.8px;margin:5px 0 1px;">RANGE LEVELS</div>
+    <div class="pill-grp" id="pill-rl" style="margin-top:3px"><button class="pill" data-v="3">3</button><button class="pill" data-v="4">4</button><button class="pill" data-v="5">5</button><button class="pill" data-v="6">6</button><button class="pill" data-v="7">7</button><button class="pill" data-v="8">8</button><button class="pill" data-v="9">9</button><button class="pill on" data-v="10">10</button><button class="pill" data-v="12">12</button><button class="pill" data-v="13">13</button><button class="pill" data-v="14">14</button><button class="pill" data-v="15">15</button></div>
+    <div class="pill-grp" id="pill-iv" style="margin-top:5px">
+      <button class="pill pill-iv" data-s="10">10s</button>
+      <button class="pill pill-iv" data-s="15">15s</button>
+      <button class="pill pill-iv" data-s="30">30s</button>
+      <button class="pill pill-iv on" data-s="60">1m</button>
+      <button class="pill pill-iv" data-s="120">2m</button>
+      <button class="pill pill-iv" data-s="180">3m</button>
+      <button class="pill pill-iv" data-s="300">5m</button>
+      <button class="pill pill-iv" data-s="600">10m</button>
+      <button class="pill pill-iv" data-s="900">15m</button>
+      <button class="pill pill-iv" data-s="1200">20m</button>
+      <button class="pill pill-iv" data-s="1800">30m</button>
+      <button class="pill pill-iv" data-s="3600">1h</button>
+      <button class="pill pill-iv" data-s="7200">2h</button>
+      <button class="pill pill-iv" data-s="14400">4h</button>
+    </div>
+    <div class="pill-grp" id="pill-cn" style="margin-top:4px">
+      <button class="pill" data-v="3">3</button><button class="pill" data-v="5">5</button>
+      <button class="pill on" data-v="10">10</button><button class="pill" data-v="15">15</button>
+      <button class="pill" data-v="20">20</button><button class="pill" data-v="30">30</button>
+    </div>
+    <div class="pill-grp" id="pill-tk" style="margin-top:4px">
+      <button class="pill on" data-v="0.01">0.01</button>
+      <button class="pill" data-v="0.10">0.10</button>
+      <button class="pill" data-v="0.25">0.25</button>
+      <button class="pill" data-v="0.50">0.50</button>
+      <button class="pill" data-v="1.00">1.00</button>
+      <button class="pill" data-v="2.00">2.00</button>
+    </div>
+    <div class="sb-row" style="margin-top:5px">
+      <label>Col W</label>
+      <input type="range" class="sl" id="sb-cw" min="28" max="120" value="52"
+        oninput="CFG.colW=+this.value;document.getElementById('cw-lbl').textContent=this.value+'px';if(R){R.resize();R.draw();}">
+      <span id="cw-lbl">52px</span>
+    </div>
+    <div class="sb-row">
+      <label>Row H</label>
+      <input type="range" class="sl" id="sb-rh" min="12" max="36" value="19"
+        oninput="CFG.rowH=+this.value;document.getElementById('rh-lbl').textContent=this.value+'px';if(R){R.resize();R.draw();}">
+      <span id="rh-lbl">19px</span>
+    </div>
+
+    <!-- ═══ TIME RANGE + BUILD CANDLES ═══ -->
+    <div class="sb-s" style="color:#00cc88;border-color:#003322;margin-top:10px;display:flex;justify-content:space-between;align-items:center;">
+      <span>Time Range</span>
+      <span id="tr-tick-badge" style="font-size:8px;color:#00aa55;"></span>
+    </div>
+    <div style="font-size:8px;color:#446655;letter-spacing:.8px;margin:4px 0 2px;">&#9658; START</div>
+    <input type="datetime-local" id="tr-start-dt" step="1"
+      style="width:100%;background:#111;border:1px solid #1e3a2a;color:#88ccaa;padding:4px 6px;border-radius:3px;font-size:10px;outline:none;box-sizing:border-box;color-scheme:dark;font-family:inherit;"
+      onchange="trSyncFromDT()">
+    <div style="font-size:8px;color:#446655;letter-spacing:.8px;margin:5px 0 2px;">&#9668; END</div>
+    <input type="datetime-local" id="tr-end-dt" step="1"
+      style="width:100%;background:#111;border:1px solid #1e3a2a;color:#88ccaa;padding:4px 6px;border-radius:3px;font-size:10px;outline:none;box-sizing:border-box;color-scheme:dark;font-family:inherit;"
+      onchange="trSyncFromDT()">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:2px;margin:5px 0;">
+      <button onclick="trQuick('full')" style="background:#0d1f14;border:1px solid #1e3a2a;color:#559966;padding:3px 0;border-radius:3px;cursor:pointer;font-size:8px;font-family:inherit;">Full</button>
+      <button onclick="trQuick('am')"   style="background:#0d1f14;border:1px solid #1e3a2a;color:#559966;padding:3px 0;border-radius:3px;cursor:pointer;font-size:8px;font-family:inherit;">AM</button>
+      <button onclick="trQuick('pm')"   style="background:#0d1f14;border:1px solid #1e3a2a;color:#559966;padding:3px 0;border-radius:3px;cursor:pointer;font-size:8px;font-family:inherit;">PM</button>
+      <button onclick="trQuick('rth')"  style="background:#0d1f14;border:1px solid #1e3a2a;color:#559966;padding:3px 0;border-radius:3px;cursor:pointer;font-size:8px;font-family:inherit;">RTH</button>
+    </div>
+    <input type="hidden" id="tr-start" value="">
+    <input type="hidden" id="tr-end"   value="">
+    <button id="btn-build" onclick="buildCandles()"
+      style="margin-top:4px;width:100%;background:#001428;border:1.5px solid #0066cc;color:#44aaff;padding:7px 0;border-radius:4px;cursor:pointer;font-size:11px;font-family:inherit;font-weight:bold;letter-spacing:1.5px;">&#9658; BUILD CANDLES</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px;">
+      <button onclick="trNav(-1)" style="background:#111;border:1px solid #2a2a2a;color:#666;padding:5px 0;border-radius:3px;cursor:pointer;font-size:10px;font-family:inherit;">&#9664; PREV</button>
+      <button onclick="trNav(1)"  style="background:#111;border:1px solid #2a2a2a;color:#666;padding:5px 0;border-radius:3px;cursor:pointer;font-size:10px;font-family:inherit;">NEXT &#9654;</button>
+    </div>
+    <div id="tr-nav-info" style="font-size:8px;color:#334;text-align:center;margin-top:2px;"></div>
+
+    <div class="sb-s" style="display:flex;justify-content:space-between;align-items:center;">
+      <span id="sim-mode-lbl">Simulation</span>
+      <span id="sim-tick-lbl" style="font-size:8px;color:#557766;"></span>
+    </div>
+    <div class="sim-row">
+      <button class="sim-btn play on" id="sim-play" onclick="simPlay()">▶</button>
+      <button class="sim-btn pause" id="sim-pause" onclick="simPause()">⏸</button>
+      <button class="sim-btn stop" id="sim-stop" onclick="simStop()">■</button>
+    </div>
+    <div class="sb-row">
+      <label>Speed</label>
+      <input type="range" class="sl" id="sim-spd" min="0.5" max="20" value="1" step="0.5" oninput="simSpeed(this.value)">
+      <span id="spd-lbl">1/s</span>
+    </div>
+    <div class="qi-hdr">● QUICK INDICATORS</div>
+    <div class="qi-row" id="qi-poc-line"><span>POC Line</span><label class="sw"><input type="checkbox" onchange="qiToggle('poc-line',this)"><span class="sw-t"></span></label></div>
+    <div class="qi-row" id="qi-imbalance"><span>Imbalance Highlight</span><label class="sw"><input type="checkbox" onchange="qiToggleCFG('showImbalance',this)"><span class="sw-t"></span></label></div>
+    <div class="qi-row" id="qi-vwap-line"><span>VWAP Line</span><label class="sw"><input type="checkbox" onchange="qiToggle('vwap-line',this)"><span class="sw-t"></span></label></div>
+    <div class="qi-row" id="qi-vwap-sd1"><span>VWAP ±1σ Bands</span><label class="sw"><input type="checkbox" onchange="qiToggle('vwap-sd1',this);qiToggle('vwap-sd2',this)"><span class="sw-t"></span></label></div>
+    <div class="qi-row" id="qi-va-fill"><span>Value Area Fill</span><label class="sw"><input type="checkbox" onchange="qiToggle('va-fill',this)"><span class="sw-t"></span></label></div>
+    <div class="qi-row" id="qi-vah-line"><span>VAH / VAL Lines</span><label class="sw"><input type="checkbox" onchange="qiToggle('vah-line',this);qiToggle('val-line',this)"><span class="sw-t"></span></label></div>
+    <div class="qi-row" id="qi-delta-candle"><span>Delta Bar</span><label class="sw"><input type="checkbox" onchange="qiToggleCFG('showDelta',this);qiToggle('delta-candle',this)"><span class="sw-t"></span></label></div>
+    <div class="qi-row" id="qi-delta-divergence"><span>Delta Divergence</span><label class="sw"><input type="checkbox" onchange="qiToggle('delta-divergence',this)"><span class="sw-t"></span></label></div>
+    <div class="qi-row" id="qi-delta-cum"><span>Cumulative Delta</span><label class="sw"><input type="checkbox" onchange="qiToggle('delta-cum',this)"><span class="sw-t"></span></label></div>
+    <div class="qi-row" id="qi-delta-pct"><span>Delta % per Row</span><label class="sw"><input type="checkbox" onchange="qiToggle('delta-pct',this)"><span class="sw-t"></span></label></div>
+    <div class="qi-row" id="qi-stk-imb"><span>Stacked Imbalance</span><label class="sw"><input type="checkbox" onchange="qiToggle('stk-imb-buy',this);qiToggle('stk-imb-sell',this);qiToggle('stk-imb-bull',this);qiToggle('stk-imb-bear',this)"><span class="sw-t"></span></label></div>
+    <div class="qi-row" id="qi-stop-vol"><span>Stopping Volume</span><label class="sw"><input type="checkbox" onchange="qiToggle('stop-vol',this)"><span class="sw-t"></span></label></div>
+    <div class="qi-row" id="qi-of-absorption"><span>Absorption</span><label class="sw"><input type="checkbox" onchange="qiToggle('of-absorption',this)"><span class="sw-t"></span></label></div>
+    <div class="qi-row" id="qi-of-exhaustion"><span>Exhaustion Prints</span><label class="sw"><input type="checkbox" onchange="qiToggle('of-exhaustion',this)"><span class="sw-t"></span></label></div>
+    <div class="qi-row" id="qi-of-excess"><span>Excess / Rejection</span><label class="sw"><input type="checkbox" onchange="qiToggle('of-excess',this)"><span class="sw-t"></span></label></div>
+    <div class="qi-row" id="qi-thin-on"><span>Thin Prints</span><label class="sw"><input type="checkbox" onchange="qiToggle('thin-on',this)"><span class="sw-t"></span></label></div>
+    <div class="qi-row" id="qi-mom-color"><span>Momentum Color</span><label class="sw"><input type="checkbox" onchange="qiToggle('mom-color',this)"><span class="sw-t"></span></label></div>
+    <div class="qi-slider-row">
+      <span class="qi-sl-lbl">Imbalance ×</span>
+      <input type="range" class="sl qi-sl" id="qi-imb-sl" min="1" max="10" step="0.5" value="1.5"
+        oninput="CFG.imbThreshold=Math.round(this.value*100);document.getElementById('qi-imb-val').textContent=this.value+'x';if(R)R.draw()">
+      <span class="qi-sl-val" id="qi-imb-val">1.5x</span>
+    </div>
+    <div class="qi-slider-row">
+      <span class="qi-sl-lbl">Min Vol</span>
+      <input type="range" class="sl qi-sl" id="qi-minvol-sl" min="1" max="50" step="1" value="2"
+        oninput="CFG.imbMinVol=+this.value;document.getElementById('qi-minvol-val').textContent=this.value;if(R)R.draw()">
+      <span class="qi-sl-val" id="qi-minvol-val">2</span>
+    </div>
+    </div>
+  </div>
+  <div id="sb-tab" onclick="toggleSB()">◀</div>
+
+  <div id="chart-area">
+    <div id="hscroll-outer" style="position:relative">
+      <div id="hscroll"><div id="hscroll-inner"><canvas id="MC"></canvas></div></div>
+      <canvas id="SC" width="74"></canvas>
+      <canvas id="crosshair-canvas"></canvas>
+      <div id="chart-idle-state" style="display:none;position:absolute;inset:0;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#446688;font-size:12px;text-align:center;line-height:1.8;pointer-events:none;background:#0a0e14;">
+        <div style="font-size:26px;opacity:.5;">◧</div>
+        <div>No data loaded.<br>Import an Excel/CSV file, connect xlwings, or click <b>▶ Demo</b> to preview.</div>
+      </div>
+    </div>
+    <div id="chart-nav">
+      <button class="nav-btn" title="Scroll to start" onclick="navScroll(-9999)">⏮</button>
+      <button class="nav-btn" title="Scroll left" onclick="navScroll(-3)">◀</button>
+      <button class="nav-btn" title="Scroll right" onclick="navScroll(3)">▶</button>
+      <button class="nav-btn" title="Scroll to latest" onclick="navScroll(9999)">⏭</button>
+      <div class="nav-sep"></div>
+      <button class="nav-btn" title="Zoom out" onclick="navZoom(-1)">−</button>
+      <input type="range" id="nav-zoom-sl" min="1" max="10" value="5" step="1" oninput="navZoomSlider(+this.value)">
+      <button class="nav-btn" title="Zoom in" onclick="navZoom(1)">+</button>
+      <span id="nav-zoom-lbl">52px</span>
+      <div class="nav-sep"></div>
+      <div id="nav-minimap"><div id="nav-minimap-thumb"></div></div>
+      <div class="nav-sep"></div>
+      <span id="cursor-info">—</span>
+      <span style="color:#222;font-size:8px;white-space:nowrap;flex-shrink:0">↕ Ctrl+drag · ↔ drag · wheel zoom · ⌨ arrows</span>
+      <span id="nav-pos-lbl"></span>
+      <div class="nav-sep"></div>
+      <button class="nav-btn" title="Reset vertical — center the last candlestick" onclick="if(window.resetVerticalToLastCandle)resetVerticalToLastCandle();else{CFG.chartOffsetY=0;if(R)R.draw();}">⊙</button>
+    </div>
+    <div id="flow-resize-handle" title="Drag to resize flow chart" style="display:none"></div>
+    <div id="flow-strip"><canvas id="FC"></canvas></div>
+    <div id="stats-resize-handle" title="Drag to resize stats table"></div>
+    <div id="stats-strip"><table class="st"><tbody id="stb"></tbody></table></div>
+  </div>
+
+  <div id="rp-tab" onclick="toggleRP()" title="Toggle candle summary">▶</div>
+  <div id="rp-resize-handle" title="Drag to resize candle summary"></div>
+  <div id="right-panel">
+    <div class="rp-hdr">● CANDLE SUMMARY</div>
+    <div id="cs-grid">
+      <div class="cs-cell"><div class="cs-lbl">OPEN</div><div class="cs-val" id="csv-open">—</div></div>
+      <div class="cs-cell"><div class="cs-lbl">CLOSE</div><div class="cs-val" id="csv-close">—</div></div>
+      <div class="cs-cell"><div class="cs-lbl">HIGH</div><div class="cs-val cs-bull" id="csv-high">—</div></div>
+      <div class="cs-cell"><div class="cs-lbl">LOW</div><div class="cs-val cs-bear" id="csv-low">—</div></div>
+      <div class="cs-cell"><div class="cs-lbl">POC</div><div class="cs-val cs-poc" id="csv-poc">—</div></div>
+      <div class="cs-cell"><div class="cs-lbl">VWAP</div><div class="cs-val cs-vwap" id="csv-vwap">—</div></div>
+      <div class="cs-cell"><div class="cs-lbl">MARKER</div><div class="cs-val" id="csv-marker" style="color:#556;">0</div></div>
+      <div class="cs-cell"><div class="cs-lbl">MCGINLEY</div><div class="cs-val" id="csv-mcginley-val">—</div></div>
+      <div class="cs-cell"><div class="cs-lbl">MD SIGNAL</div><div class="cs-val" id="csv-mcginley" style="color:#556;">0</div></div>
+      <div class="cs-cell"><div class="cs-lbl">DELTA H-L</div><div class="cs-val" id="csv-dhl">—</div></div>
+      <div class="cs-cell"><div class="cs-lbl">CUM. Δ</div><div class="cs-val" id="csv-cumd">—</div></div>
+    </div>
+    <div id="cs-dynamic-grid"></div>
+    <div id="cs-spl-box" style="margin:6px 3px 3px;background:#14110a;border:1px solid #443300;border-radius:3px;padding:5px 7px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
+        <span style="font-size:9px;color:#ccaa33;font-weight:bold;letter-spacing:.3px;">SPL TRD</span>
+        <span class="cs-val" id="csv-spl-trd" style="color:#ffcc44;font-size:13px;">0</span>
+      </div>
+      <div id="csv-spl-price" style="font-size:7px;color:#886622;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">—</div>
+    </div>
+    <div id="cs-delta-flip-box" style="margin:4px 3px 3px;background:#0a0d14;border:1px solid #1a3a5a;border-radius:3px;padding:5px 7px;">
+      <div style="font-size:9px;color:#4a9eff;font-weight:bold;letter-spacing:.5px;margin-bottom:4px;padding-bottom:2px;border-bottom:1px solid #1a3a5a;">DELTA FLIP</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;">
+        <div class="cs-cell"><div class="cs-lbl">L-H Bid</div><div class="cs-val" id="csv-df-hlbid">0</div></div>
+        <div class="cs-cell"><div class="cs-lbl">L-H Ask</div><div class="cs-val" id="csv-df-hlask">0</div></div>
+        <div class="cs-cell"><div class="cs-lbl">AGG_Bid-AGG_Ask</div><div class="cs-val" id="csv-df-aggnet">0</div></div>
+        <div class="cs-cell"><div class="cs-lbl">H-L Vol</div><div class="cs-val" id="csv-df-hlvol">0</div></div>
+        <div class="cs-cell"><div class="cs-lbl">L-H RTL</div><div class="cs-val" id="csv-df-hlrtl">0</div></div>
+        <div class="cs-cell"><div class="cs-lbl">L-H SEQ</div><div class="cs-val" id="csv-df-hlseq">0</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /#chart-pane -->
+
+<!-- ═══ TAB 2: TRADE LOG ═══ -->
+<div id="tradelog-pane" class="tab-pane">
+  <!-- Row 1: Filter controls -->
+  <div id="tl-toolbar">
+    <label>Filter:</label>
+    <input id="tl-filter-input" type="text" placeholder="Time / price / side / qualifier…" oninput="tlRender()">
+    <label>Side:</label>
+    <select id="tl-side" onchange="tlRender()" style="background:#1a1a1a;border:1px solid #333;color:#aaa;padding:2px 6px;border-radius:3px;font-size:9px;font-family:inherit;">
+      <option value="">All</option><option value="BID">Hit Bid</option><option value="ASK">Lift Ask</option>
+    </select>
+    <label>Min Vol:</label>
+    <input id="tl-minvol" type="number" value="0" min="0" style="width:48px;background:#1a1a1a;border:1px solid #333;color:#aaa;padding:2px 4px;border-radius:3px;font-size:9px;" oninput="tlRender()">
+    <span style="color:#333;font-size:8px;margin-left:6px">|</span>
+    <label>Select all:</label>
+    <button onclick="tlColSelectAll(true)"  style="background:#111;border:1px solid #222;color:#446;padding:1px 7px;border-radius:3px;font-size:8px;cursor:pointer;font-family:inherit;">All</button>
+    <button onclick="tlColSelectAll(false)" style="background:#111;border:1px solid #222;color:#446;padding:1px 7px;border-radius:3px;font-size:8px;cursor:pointer;font-family:inherit;">None</button>
+    <span id="tl-count" style="margin-left:auto;color:#446;font-size:9px;"></span>
+  </div>
+  <!-- Row 2: Column selector pills -->
+  <div id="tl-col-pills"></div>
+  <!-- Table -->
+  <div id="tl-wrap">
+    <table class="tl-table"><thead><tr id="tl-head"></tr></thead><tbody id="tl-body"></tbody></table>
+  </div>
+</div>
+
+<!-- ═══ TAB 3: PRICE SUMMARY ═══ -->
+<div id="summary-pane" class="tab-pane">
+  <div id="sum-toolbar" style="flex-direction:column;align-items:flex-start;gap:4px;padding:6px 10px;">
+    <!-- Row 1: Interval pills -->
+    <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;width:100%">
+      <span style="color:#446688;font-size:8px;letter-spacing:.8px;text-transform:uppercase;font-weight:bold;white-space:nowrap">Interval:</span>
+      <div id="sum-pill-iv" style="display:flex;flex-wrap:wrap;gap:2px;">
+        <button class="sum-iv-pill" data-s="10">10s</button>
+        <button class="sum-iv-pill" data-s="15">15s</button>
+        <button class="sum-iv-pill" data-s="30">30s</button>
+        <button class="sum-iv-pill on" data-s="60">1m</button>
+        <button class="sum-iv-pill" data-s="120">2m</button>
+        <button class="sum-iv-pill" data-s="180">3m</button>
+        <button class="sum-iv-pill" data-s="300">5m</button>
+        <button class="sum-iv-pill" data-s="600">10m</button>
+        <button class="sum-iv-pill" data-s="900">15m</button>
+        <button class="sum-iv-pill" data-s="1800">30m</button>
+        <button class="sum-iv-pill" data-s="3600">1h</button>
+        <button class="sum-iv-pill" data-s="7200">2h</button>
+        <button class="sum-iv-pill" data-s="14400">4h</button>
+      </div>
+      <span style="color:#446688;font-size:8px;letter-spacing:.8px;text-transform:uppercase;font-weight:bold;white-space:nowrap;margin-left:10px">Tick:</span>
+      <div id="sum-pill-tk" style="display:flex;gap:2px;">
+        <button class="sum-iv-pill on" data-tk="0.10">0.10</button>
+        <button class="sum-iv-pill" data-tk="0.25">0.25</button>
+        <button class="sum-iv-pill" data-tk="0.50">0.50</button>
+        <button class="sum-iv-pill" data-tk="1.00">1.00</button>
+        <button class="sum-iv-pill" data-tk="2.00">2.00</button>
+      </div>
+      <span id="sum-count" style="margin-left:auto;color:#446;font-size:9px;white-space:nowrap;"></span>
+    </div>
+    <!-- Row 2: Column pills + resize controls -->
+    <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;width:100%">
+      <span style="color:#446688;font-size:8px;letter-spacing:.8px;text-transform:uppercase;font-weight:bold;white-space:nowrap">Columns:</span>
+      <div id="sum-col-pills" style="display:flex;flex-wrap:wrap;gap:2px;flex:1;"></div>
+      <button onclick="sumSelectAll(true)" style="background:#001428;border:1px solid #0066cc;color:#44aaff;padding:2px 9px;border-radius:3px;font-size:9px;cursor:pointer;font-family:inherit;flex-shrink:0;">All</button>
+      <button onclick="sumSelectAll(false)" style="background:#111;border:1px solid #333;color:#777;padding:2px 9px;border-radius:3px;font-size:9px;cursor:pointer;font-family:inherit;flex-shrink:0;">None</button>
+      <div style="display:flex;align-items:center;gap:3px;flex-shrink:0;border-left:1px solid #1e1e1e;padding-left:8px;">
+        <span style="font-size:8px;color:#446;white-space:nowrap;">Col width:</span>
+        <button class="fs-btn" onclick="sumColWidenBy(-5)" title="Narrow selected column (←)">◀</button>
+        <span id="sum-col-width-info" style="display:none"></span>
+        <button class="fs-btn" onclick="sumColWidenBy(+5)" title="Widen selected column (→)">▶</button>
+        <button class="fs-btn" style="width:auto;padding:0 5px;font-size:8px;" onclick="_sumSelectedCol=null;document.getElementById('sum-col-width-info').style.display='none';document.querySelectorAll('#sum-head th').forEach(t=>t.style.background='');" title="Deselect">✕</button>
+      </div>
+    </div>
+  </div>
+  <div id="sum-wrap">
+    <table class="sum-table"><thead><tr id="sum-head"></tr></thead><tbody id="sum-body"></tbody></table>
+  </div>
+</div>
+
+<div id="levels-pane" class="tab-pane">
+  <div id="agg-ctrl" style="background:#0d1018;border-bottom:1px solid #1e1e1e;padding:6px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0;">
+    <span style="color:#446688;font-size:8px;letter-spacing:.8px;font-weight:bold;text-transform:uppercase">Side:</span>
+    <select id="agg-filter-side" onchange="aggApplyFilters()" style="background:#111;border:1px solid #222;color:#aaa;padding:3px 6px;border-radius:3px;font-size:9px;font-family:inherit;">
+      <option value="all">All</option><option value="HIT">Hit only</option>
+      <option value="LIFT">Lift only</option><option value="BOTH">Has both</option>
+    </select>
+    <span style="color:#446688;font-size:8px;font-weight:bold;text-transform:uppercase">Min Vol:</span>
+    <input type="number" id="agg-filter-vol" value="0" min="0" oninput="aggApplyFilters()" style="background:#111;border:1px solid #222;color:#aaa;padding:3px 6px;border-radius:3px;font-size:9px;font-family:inherit;width:55px;">
+    <span style="color:#446688;font-size:8px;font-weight:bold;text-transform:uppercase">Sort:</span>
+    <select id="agg-sort-col" onchange="aggApplyFilters()" style="background:#111;border:1px solid #222;color:#aaa;padding:3px 6px;border-radius:3px;font-size:9px;font-family:inherit;">
+      <option value="price">Price ↕</option><option value="totalVol">Total Vol</option>
+      <option value="hitTrdVol">Hit Vol</option><option value="liftTrdVol">Lift Vol</option>
+      <option value="delta">Delta</option><option value="trades">Trades</option>
+    </select>
+    <select id="agg-sort-dir" onchange="aggApplyFilters()" style="background:#111;border:1px solid #222;color:#aaa;padding:3px 6px;border-radius:3px;font-size:9px;font-family:inherit;">
+      <option value="desc">▼ Desc</option><option value="asc">▲ Asc</option>
+    </select>
+    <button onclick="aggBuild()" style="background:#001428;border:1px solid #0066cc;color:#44aaff;padding:3px 10px;border-radius:3px;font-size:9px;cursor:pointer;font-family:inherit;font-weight:bold;">↺ Rebuild</button>
+    <button onclick="aggExportCSV()" style="background:#001a00;border:1px solid #004400;color:#44cc44;padding:3px 10px;border-radius:3px;font-size:9px;cursor:pointer;font-family:inherit;">⬇ CSV</button>
+    <span style="flex:1;min-width:8px;"></span>
+    <span style="color:#446688;font-size:8px;text-transform:uppercase;letter-spacing:.5px;">Columns:</span>
+    <button type="button" class="agg-pill on" data-col="bSize">B.Size</button>
+    <button type="button" class="agg-pill on" data-col="aSize">A.Size</button>
+    <button type="button" class="agg-pill" data-col="numBid">Num Bid</button>
+    <button type="button" class="agg-pill" data-col="numAsk">Num Ask</button>
+    <button type="button" class="agg-pill on" data-col="trdVol">Trd.Vol</button>
+    <button type="button" class="agg-pill on" data-col="volume">Volume</button>
+    <button type="button" class="agg-pill" data-col="eligVol">ELIG_V</button>
+    <button type="button" class="agg-pill" data-col="moves">#Trades</button>
+  </div>
+  <div id="agg-summary" style="background:#0a0a0a;border-bottom:1px solid #1a1a1a;padding:4px 12px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:9px;flex-shrink:0;">
+    <span style="color:#446688">Levels: <strong id="agg-s-levels" style="color:#ffdd44">—</strong></span>
+    <span style="color:#446688">Trades: <strong id="agg-s-trades" style="color:#aaa">—</strong></span>
+    <span style="color:#446688">Hit Vol: <strong id="agg-s-hvol" style="color:#ff5555">—</strong></span>
+    <span style="color:#446688">Lift Vol: <strong id="agg-s-lvol" style="color:#00cc66">—</strong></span>
+    <span style="color:#446688">Net Δ: <strong id="agg-s-delta">—</strong></span>
+    <span style="color:#446688">B.Size: <strong id="agg-s-bsize" style="color:#00cc66">—</strong></span>
+    <span style="color:#446688">A.Size: <strong id="agg-s-asize" style="color:#ff5555">—</strong></span>
+  </div>
+  <div id="agg-wrap" style="flex:1;overflow:auto;">
+    <div id="agg-empty" style="display:flex;align-items:center;justify-content:center;height:100%;color:#446688;font-size:12px;text-align:center;line-height:1.8;">
+      No data yet.<br><span style="font-size:10px;color:#2a3855;">Load a file or connect xlwings,<br>then click <strong style="color:#44aaff">↺ Rebuild</strong> or switch to this tab.</span>
+    </div>
+    <table id="agg-table" style="display:none;"><thead id="agg-thead"></thead><tbody id="agg-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     TAB 5 — LEVEL AGGREGATOR PRO (standalone LA, interval-linked)
+═══════════════════════════════════════════════════════════════ -->
+<div id="lagr-pane" class="tab-pane">
+
+  <!-- Controls bar -->
+  <div id="la-topbar" style="background:#0b0e15;border-bottom:1px solid #1e2840;padding:5px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-shrink:0;">
+    <span style="color:#6aabff;font-size:10px;font-weight:bold;letter-spacing:.5px">🔬 Level Aggregator Pro</span>
+    <span id="la-row-badge" style="background:#1e2840;border:1px solid #2a3855;color:#88aacc;padding:1px 8px;border-radius:3px;font-size:9px;">No data</span>
+    <span id="la-dedup-badge" style="display:none;background:#1e2840;border:1px solid #2a3855;color:#88aacc;padding:1px 8px;border-radius:3px;font-size:9px;"></span>
+    <span id="la-lift-badge" style="display:none;background:#001a10;border:1px solid #004422;color:#00cc88;padding:1px 8px;border-radius:3px;font-size:9px;"></span>
+    <span id="la-hit-badge"  style="display:none;background:#1a0008;border:1px solid #440022;color:#ee3844;padding:1px 8px;border-radius:3px;font-size:9px;"></span>
+    <div style="flex:1;min-width:8px;"></div>
+    <!-- Tick size -->
+    <span style="color:#446688;font-size:8px;font-weight:bold;text-transform:uppercase;letter-spacing:.5px">Tick:</span>
+    <div style="display:flex;gap:3px;align-items:center;">
+      <button class="la-tick-pill" onclick="laSetTick(0.10)">0.10</button>
+      <button class="la-tick-pill" onclick="laSetTick(0.25)">0.25</button>
+      <button class="la-tick-pill" onclick="laSetTick(0.50)">0.50</button>
+      <button class="la-tick-pill" onclick="laSetTick(1.00)">1.00</button>
+      <input type="number" id="la-tick-input" value="0.10" min="0.01" step="0.01" onchange="laSetTick(+this.value)" style="background:#111;border:1px solid #333;color:#ddd;padding:2px 5px;border-radius:3px;font-size:9px;font-family:inherit;width:50px;">
+    </div>
+    <button onclick="laRebuild()" style="background:#001428;border:1px solid #0066cc;color:#44aaff;padding:2px 10px;border-radius:3px;font-size:9px;cursor:pointer;font-family:inherit;font-weight:bold;">↺ Rebuild</button>
+    <button onclick="laExportCSV()" style="background:#001a00;border:1px solid #004400;color:#44cc44;padding:2px 10px;border-radius:3px;font-size:9px;cursor:pointer;font-family:inherit;">⬇ CSV</button>
+  </div>
+
+  <!-- Column controls -->
+  <div id="la-controls" style="background:#111620;border-bottom:1px solid #1e2840;padding:5px 12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex-shrink:0;">
+    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+      <span style="color:#446688;font-size:8px;font-weight:bold;text-transform:uppercase">B/A Sizes:</span>
+      <button type="button" class="la-col-pill la-bid checked" data-col="bSize">B Size</button>
+      <span style="color:#333;font-size:9px">vs</span>
+      <button type="button" class="la-col-pill la-ask checked" data-col="aSize">A Size</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+      <span style="color:#446688;font-size:8px;font-weight:bold;text-transform:uppercase">Ord Counts:</span>
+      <button type="button" class="la-col-pill la-bid checked" data-col="numBid">Num Bid</button>
+      <span style="color:#333;font-size:9px">vs</span>
+      <button type="button" class="la-col-pill la-ask checked" data-col="numAsk">Num Ask</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;">
+      <span style="color:#446688;font-size:8px;font-weight:bold;text-transform:uppercase">Info:</span>
+      <button type="button" class="la-col-pill la-gold checked" data-col="numOrders">#Orders</button>
+      <button type="button" class="la-col-pill la-gold checked" data-col="trdVol">Trd.Vol</button>
+      <button type="button" class="la-col-pill la-gold checked" data-col="volume">Volume</button>
+      <button type="button" class="la-col-pill la-gold checked" data-col="moves">Moves/RTL</button>
+      <button type="button" class="la-col-pill la-gold" data-col="eligbl">EligblTrd</button>
+    </div>
+    <div style="flex:1;min-width:8px;"></div>
+    <!-- Filters inline -->
+    <span style="color:#446688;font-size:8px;font-weight:bold;text-transform:uppercase">Side:</span>
+    <select id="la-filter-side" onchange="laApplyFilters()" style="background:#111;border:1px solid #222;color:#aaa;padding:2px 6px;border-radius:3px;font-size:9px;font-family:inherit;">
+      <option value="all">All</option><option value="HIT">Hit only</option>
+      <option value="LIFT">Lift only</option><option value="BOTH">Has both</option>
+    </select>
+    <span style="color:#446688;font-size:8px;font-weight:bold;text-transform:uppercase">Min Vol:</span>
+    <input type="number" id="la-filter-vol" value="0" min="0" oninput="laApplyFilters()" style="background:#111;border:1px solid #222;color:#aaa;padding:2px 5px;border-radius:3px;font-size:9px;font-family:inherit;width:50px;">
+    <span style="color:#446688;font-size:8px;font-weight:bold;text-transform:uppercase">Sort:</span>
+    <select id="la-sort-col" onchange="laApplyFilters()" style="background:#111;border:1px solid #222;color:#aaa;padding:2px 6px;border-radius:3px;font-size:9px;font-family:inherit;">
+      <option value="price">Price</option><option value="totalVol">Total Vol</option>
+      <option value="hitTrdVol">Hit Vol</option><option value="liftTrdVol">Lift Vol</option>
+      <option value="delta">Delta</option>
+    </select>
+    <select id="la-sort-dir" onchange="laApplyFilters()" style="background:#111;border:1px solid #222;color:#aaa;padding:2px 6px;border-radius:3px;font-size:9px;font-family:inherit;">
+      <option value="desc">▼ Desc</option><option value="asc">▲ Asc</option>
+    </select>
+  </div>
+
+  <!-- Summary bar -->
+  <div id="la-summary-bar" style="background:#0a0a0a;border-bottom:1px solid #1a1a1a;padding:4px 12px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;font-size:9px;flex-shrink:0;">
+    <span style="color:#446688">Levels: <strong id="la-s-levels" style="color:#ffdd44">—</strong></span>
+    <span style="color:#446688">Trades: <strong id="la-s-trades" style="color:#aaa">—</strong></span>
+    <span style="color:#446688">Total Vol: <strong id="la-s-vol" style="color:#aaa">—</strong></span>
+    <span style="color:#446688">Hit Vol: <strong id="la-s-hitvol" style="color:#ff5555">—</strong></span>
+    <span style="color:#446688">Lift Vol: <strong id="la-s-liftvol" style="color:#00cc88">—</strong></span>
+    <span style="color:#446688">Net Δ: <strong id="la-s-delta">—</strong></span>
+    <span style="color:#446688">B.Size: <strong id="la-s-bsize" style="color:#00cc88">—</strong></span>
+    <span style="color:#446688">A.Size: <strong id="la-s-asize" style="color:#ff5555">—</strong></span>
+  </div>
+
+  <!-- Table / empty state -->
+  <div id="la-table-wrap" style="flex:1;overflow:auto;">
+    <div id="la-empty-state" style="display:flex;align-items:center;justify-content:center;height:100%;color:#446688;font-size:12px;text-align:center;line-height:1.8;">
+      No data yet.<br>
+      <span style="font-size:10px;color:#2a3855;">Load a file or connect xlwings,<br>then click <strong style="color:#44aaff">↺ Rebuild</strong> or switch to this tab.</span>
+    </div>
+    <table id="la-level-table" style="display:none;border-collapse:collapse;width:100%;font-size:10px;">
+      <thead id="la-thead"></thead>
+      <tbody id="la-tbody"></tbody>
+    </table>
+  </div>
+
+</div><!-- /#lagr-pane -->
+
+
+<div id="dfpairs-pane" class="tab-pane">
+  <div id="dfp-toolbar">
+    <label>Delta Flip Pair Selector</label>
+    <div id="dfp-pair-box">
+      <button type="button" class="dfp-pair-pill on" data-pair="lhBid">L-H Bid</button>
+      <button type="button" class="dfp-pair-pill on" data-pair="lhAsk">L-H Ask</button>
+      <button type="button" class="dfp-pair-pill on" data-pair="aggNet">AGGR Bid-Ask</button>
+      <button type="button" class="dfp-pair-pill" data-pair="hlVol">H-L Vol</button>
+      <button type="button" class="dfp-pair-pill" data-pair="lhRTL">L-H RTL</button>
+      <button type="button" class="dfp-pair-pill" data-pair="lhSEQ">L-H SEQ</button>
+    </div>
+    <button onclick="dfpSelectAll(true)" style="background:#001428;border:1px solid #0066cc;color:#44aaff;padding:2px 9px;border-radius:3px;font-size:9px;cursor:pointer;font-family:inherit;">All</button>
+    <button onclick="dfpSelectAll(false)" style="background:#111;border:1px solid #333;color:#777;padding:2px 9px;border-radius:3px;font-size:9px;cursor:pointer;font-family:inherit;">None</button>
+    <span style="flex:1"></span>
+    <label>Sort</label>
+    <select id="dfp-sort" onchange="dfpRender()" style="background:#111;border:1px solid #333;color:#aaa;padding:2px 6px;border-radius:3px;font-size:9px;font-family:inherit;">
+      <option value="time">Time</option><option value="score">Strongest %</option><option value="delta">Delta</option><option value="vol">Total Vol</option>
+    </select>
+    <button onclick="dfpRender()" style="background:#001428;border:1px solid #0066cc;color:#44aaff;padding:2px 10px;border-radius:3px;font-size:9px;cursor:pointer;font-family:inherit;font-weight:bold;">↺ Rebuild</button>
+  </div>
+  <div id="dfp-summary">
+    <span>Current interval bars: <strong id="dfp-bars" style="color:#ffdd44">—</strong></span>
+    <span>Selected pairs: <strong id="dfp-selected" style="color:#44aaff">—</strong></span>
+    <span>Green = LIFT/positive side, Red = HIT/negative side. This tab is linked to the current running candle interval only.</span>
+  </div>
+  <div id="dfp-wrap">
+    <div id="dfp-empty">No data yet.<br><span style="font-size:10px;color:#2a3855;">Load your Excel/CSV file, build candles or start replay/live. This tab shows only the current interval.</span></div>
+    <table id="dfp-table" style="display:none"><thead id="dfp-head"></thead><tbody id="dfp-body"></tbody></table>
+  </div>
+</div><!-- /#dfpairs-pane -->
+
+
+
+<div id="regime-pane" class="tab-pane">
+  <div id="regime-toolbar">
+    <div class="rg-title">🧭 Regime Engine Pro</div>
+    <label>Auto Lookback</label><input id="rg-lookback" type="number" value="100" min="3" max="1000" title="Auto calculated from full loaded history from first row">
+    <label>Block Levels</label><input id="rg-block" type="number" value="20" min="3" max="1000" title="Non-overlapping price levels per transition block">
+    <label>Vol Levels</label><input id="rg-volwin" type="number" value="150" min="8" max="1000" title="Volatility window in price levels">
+    <label>Forecast Levels</label><input id="rg-nstep" type="number" value="50" min="1" max="1000" title="Number of future price levels to forecast">
+    <label>Auto Level Size</label><input id="rg-levelsize" type="number" value="0" min="0" step="0.0001" title="Auto inferred from full loaded history">
+    <label>Auto Threshold</label><input id="rg-thresh" type="number" value="0.35" step="0.05" min="0.05" max="2" title="Auto optimized from full loaded history">
+    <button onclick="RegimeLinked.update(true)">↺ Recompute</button>
+    <span style="flex:1"></span>
+    <span style="color:#6d7892">Adaptive level-regime model: AUTO lookback/threshold/level size from full loaded history; forecast levels are manual</span>
+  </div>
+  <div id="regime-info">Waiting for candles...</div>
+
+  <div class="rg-card" id="rg-price-card">
+    <div class="rg-card-title">Linked Price Levels & Adaptive Regime Ribbon <small id="rg-range-info"></small></div>
+    <div id="rg-price-split" style="display:flex;gap:8px;align-items:stretch;height:180px;">
+      <div style="flex:1 1 65%;min-width:0;display:flex;flex-direction:column;">
+        <div style="font-size:8px;color:#66728d;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Past &amp; Current</div>
+        <canvas id="rg-price" style="flex:1;"></canvas>
+      </div>
+      <div style="flex:0 0 35%;min-width:0;display:flex;flex-direction:column;border-left:1px solid #1e2840;padding-left:8px;">
+        <div style="font-size:8px;color:#66728d;text-transform:uppercase;letter-spacing:.6px;margin-bottom:2px;">Forecast <small id="rg-forecast-info" style="color:#52627f;text-transform:none;"></small></div>
+        <canvas id="rg-forecast" style="flex:1;"></canvas>
+      </div>
+    </div>
+    <div id="rg-ribbon"></div>
+  </div>
+
+  <div id="rg-card-resize-handle" title="Drag to resize the price levels chart"></div>
+
+  <div class="rg-card">
+    <div class="rg-card-title">Current Regime State <small>uses completed linked candles converted to price-level history</small></div>
+    <div class="rg-banner">
+      <div id="rg-pill" class="rg-pill SIDE">—</div>
+      <div class="rg-stat"><span class="lbl">Composite Score</span><span class="val flat" id="rg-score-now">—</span></div>
+      <div class="rg-stat"><span class="lbl">Trend Slope</span><span class="val flat" id="rg-trend-now">—</span></div>
+      <div class="rg-stat"><span class="lbl">Signal Bull−Bear</span><span class="val flat" id="rg-signal">—</span></div>
+      <div class="rg-stat"><span class="lbl">Forecast Level Value</span><span class="val flat" id="rg-fcast-level">—</span></div>
+      <div class="rg-stat"><span class="lbl">Confidence</span><span class="val flat" id="rg-conv">—</span></div>
+      <div style="flex:1;min-width:180px"><div style="color:#66728d;text-transform:uppercase;font-size:.82em">Confidence meter</div><div class="rg-conv"><span id="rg-conv-bar"></span></div></div>
+    </div>
+  </div>
+
+  <div class="rg-grid3">
+    <div class="rg-card">
+      <div class="rg-card-title">State Probabilities <small>N-level Markov forecast</small></div>
+      <div id="rg-probs"></div>
+    </div>
+    <div class="rg-card">
+      <div class="rg-card-title">Feature Scores <small>normalized inputs</small></div>
+      <div class="rg-score-list" id="rg-features"></div>
+    </div>
+    <div class="rg-card">
+      <div class="rg-card-title">Stationary Distribution</div>
+      <div class="rg-bars" id="rg-stationary"></div>
+    </div>
+  </div>
+
+  <div class="rg-grid">
+    <div class="rg-card"><div class="rg-card-title">Transition Matrix <small>adaptive price-level states</small></div><table class="rg-table" id="rg-matrix"></table></div>
+    <div class="rg-card"><div class="rg-card-title">Suggested Direction</div><div id="rg-report">No report yet.</div></div>
+  </div>
+
+  <div class="rg-card rg-note">
+    <b>Design change:</b> this version does not use fixed percent thresholds. It uses an adaptive market-state score from candle return, volatility-normalized trend, candle body/range, close location, and optional order-flow delta when available. This is better for intraday TAS/TAQ data because a fixed 5% threshold often makes all candles SIDE or gives unstable results.
+  </div>
+</div>
+
+<div id="reviewer-pane" class="tab-pane">
+  <div id="rv-toolbar">
+    <div class="rv-title">🧠 Reviewer Agent</div>
+    <span class="rv-help">Compare two manually selected historical intervals with the current live/replay interval.</span>
+    <span style="flex:1"></span>
+    <button class="rv-btn" onclick="rvUseCurrentAs('A')">Use current → A</button>
+    <button class="rv-btn" onclick="rvUseCurrentAs('B')">Use current → B</button>
+    <button class="rv-btn primary" onclick="rvGenerateReport()">▶ Create Report</button>
+  </div>
+
+  <div id="rv-selectors">
+    <div class="rv-card">
+      <div class="rv-card-title">Reference interval A</div>
+      <label>Start</label><input type="datetime-local" id="rv-a-start" step="1">
+      <label>End</label><input type="datetime-local" id="rv-a-end" step="1">
+    </div>
+    <div class="rv-card">
+      <div class="rv-card-title">Reference interval B</div>
+      <label>Start</label><input type="datetime-local" id="rv-b-start" step="1">
+      <label>End</label><input type="datetime-local" id="rv-b-end" step="1">
+    </div>
+    <div class="rv-card live">
+      <div class="rv-card-title">Current live / replay interval</div>
+      <div id="rv-current-info">Uses the same visible/current interval rows as Chart, Price Summary, LA Pro and Flip Pairs.</div>
+      <label>Tick size</label>
+      <input type="number" id="rv-tick" value="0.10" step="0.01" min="0.01">
+    </div>
+
+    <div class="rv-card">
+      <div class="rv-card-title">Temp reference files 1-5</div>
+      <label>Target slot</label>
+      <select id="rv-save-slot">
+        <option value="1">Reference 1</option><option value="2">Reference 2</option><option value="3">Reference 3</option><option value="4">Reference 4</option><option value="5">Reference 5</option>
+      </select>
+      <button class="rv-btn" onclick="rvSaveLoadedToSlot()">💾 Save loaded file to slot</button>
+      <label>Load ref files</label>
+      <input type="file" id="rv-ref-files" multiple accept=".xlsx,.xlsm,.xls,.csv">
+      <button class="rv-btn" onclick="rvLoadReferenceFiles()">📂 Load files to slots</button>
+      <button class="rv-btn primary" onclick="rvGenerateSavedReport()">▶ Report: Live vs saved refs</button>
+      <div id="rv-slot-status" class="rv-help">No temp references saved yet.</div>
+    </div>
+  </div>
+
+  <div id="rv-status">No report yet.</div>
+  <div id="rv-reviewer-report-resizer" title="Drag up/down to resize Reviewer controls and Report"></div>
+  <div id="rv-report-wrap">
+    <div id="rv-empty">Choose interval A and B, then press <b>Create Report</b>.</div>
+    <div id="rv-report" style="display:none"></div>
+  </div>
+</div><!-- /#reviewer-pane -->
+
+<div id="v8agent-pane" class="tab-pane">
+  <div class="v8-agent-wrap">
+    <iframe
+      id="v8-agent-frame"
+      class="v8-agent-frame"
+      src="../rl-v86/index.html?embedded=1&mode=full-history"
+      title="V8 Agent — Full Price Summary History"
+      loading="eager"></iframe>
+  </div>
+</div>
+
+</div><!-- /#tabs-outer -->
+
+<div id="dz-wrap" style="display:none">
+  <div id="dz" onclick="document.getElementById('fi').click()">
+    <div style="font-size:36px;margin-bottom:10px">📊</div>
+    <h2>OrderFlow Trader <span style="color:#00cc44">TAS</span> Pro</h2>
+    <p>Drop your TAS feed file (.xlsx/.xlsm/.csv)<br>
+    <span style="font-size:9px;color:#556">Columns: Timestamp · PRCTCK_1 · AGGRS_SID1 · TRDPRC_1 · BID · ASK · BIDSIZE · ASKSIZE · TRDVOL_1 · TRADE_ID · SEQNUM · RTL · QUALIFIERS</span></p>
+    <button class="ul-btn" onclick="event.stopPropagation();document.getElementById('fi').click()">📂 Browse File</button><br>
+    <button class="samp-btn" onclick="event.stopPropagation();loadDemo()">▶ Demo Data</button>
+    <div id="dz-stat"></div>
+  </div>
+</div>
+
+<div id="tip"></div>
+
+<div id="sov">
+  <div id="sbox">
+    <h2>⚙ OrderFlow Settings</h2>
+    <div class="ssec">Layout</div>
+    <div class="sf"><label>Rows visible</label><input type="number" id="s-rows" value="30"></div>
+    <div class="sf"><label>Row height (px)</label><input type="number" id="s-rh2" value="19"></div>
+    <div class="sf"><label>Column width (px)</label><input type="number" id="s-cw" value="52"></div>
+    <div class="sf"><label>Price col width</label><input type="number" id="s-pcw" value="68"></div>
+    <div class="sf"><label>Font size (px)</label><input type="number" id="s-fs" value="10"></div>
+    <div class="ssec">Imbalance</div>
+    <div class="sf"><label>Threshold (%)</label><input type="number" id="s-imbt" value="300"></div>
+    <div class="sf"><label>Min volume</label><input type="number" id="s-imbv" value="5"></div>
+    <div class="ssec">Colors</div>
+    <div class="sf"><label>Normal text</label><input type="color" id="s-norm" value="#cccccc"></div>
+    <div class="sf"><label>Imb. Bid (magenta)</label><input type="color" id="s-bidhi" value="#ff00ff"></div>
+    <div class="sf"><label>Imb. Ask (cyan)</label><input type="color" id="s-askhi" value="#00ffff"></div>
+    <div class="sf"><label>POC text</label><input type="color" id="s-poc" value="#ffff00"></div>
+    <div class="sf"><label>Bull candle</label><input type="color" id="s-bull" value="#00aa44"></div>
+    <div class="sf"><label>Bear candle</label><input type="color" id="s-bear" value="#cc0022"></div>
+    <div class="sf"><label>VWAP line</label><input type="color" id="s-vwap" value="#ff8800"></div>
+    <div class="ssec">Instrument</div>
+    <div class="sf"><label>Symbol</label>
+      <select id="s-sym">
+        <option value="XAUUSD" selected>XAUUSD - Gold Spot</option>
+        <option value="ES">ES – S&P 500</option><option value="NQ">NQ – Nasdaq</option>
+        <option value="GC">GC – Gold</option><option value="CL">CL – Crude</option>
+        <option value="UB">UB – Ultra Bonds</option>
+      </select>
+    </div>
+    <div class="sf"><label>Tick size</label><input type="number" id="s-tick" value="0.01" min="0.00001" step="0.00001"></div>
+    <div class="sf"><label>Start price</label><input type="number" id="s-sp" value="4331" step="0.01"></div>
+    <div class="sf"><label>Sim interval (ms)</label><input type="number" id="s-iv" value="900" step="50"></div>
+    <div class="mbs">
+      <button onclick="closeCfg()">Cancel</button>
+      <button class="pr" onclick="applyCfg()">Apply</button>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+<!-- PATCH: Link Flip Pairs Candle Summary font size to global FONT +/- control -->
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- PATCH: Manual marker column for Price Summary and Flip Pairs tabs -->
+
+
+
+
+
+<!-- FINAL PATCH: Link every tab to the same visible chart/replay interval -->
+
+
+
+<!-- PATCH: Drag-resize columns in Flip Pairs tab -->
+
+
+
+
+
+<!-- FINAL PATCH: Flip Pairs whole-column drag resize (header + all rows) -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- PATCH: Reviewer Agent Candle Summary comparison + direction strategy -->
+
+
+
+
+
+<!-- FINAL PATCH: Reviewer clear, one-bar Previous/Next, manual Suggested Direction marker -->
+
+
+
+
+
+<!-- FINAL PATCH: one-bar Prev/Next + correct Price Summary Δ LAsk-HBid -->
+
+
+
+
+
+
+
+<!-- PATCH: Regime Engine Pro linked to existing chart candles -->
+
+
+
+
+<!-- PATCH: End Time Range Build links every tab to the candle ending at selected End time -->
+
+
+
+
+
+
+<!-- PATCH: Regime Engine robust full-history renderer + corrected directional forecast -->
+
+<!-- OF IDEA MERGED REVIEWER REGIME PATCH END -->
+
+
+<!-- OF MANUAL FILE TAB FIX PATCH START -->
+
+<!-- OF MANUAL FILE TAB FIX PATCH END -->
+
+<!-- === PATCH SCRIPTS === -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- OF FINAL SINGLE DISPLAY / TAB FIX PATCH -->
+
+
+<!-- /OF FINAL SINGLE DISPLAY / TAB FIX PATCH -->
+
+
+<!-- PATCH: Price Summary draggable column resize -->
+
+
+\n
+<!-- PATCH: Reviewer all-tab analyzing parameters (Chart candle, Price Summary,
+     Level Aggregator, LA Pro, Flip Pairs) feeding the Reviewer outcome -->
+
+
+
+<!-- PATCH: chart↔flow-chart drag resizer + reset-vertical centers the last candle -->
+
+
+
+
+<!-- PATCH: Flip Pairs — grab-and-pan vertical scroll (left-mouse drag) for the
+     table and its Candle Summary side panel, plus a drag divider to resize the
+     table vs Candle Summary panel width. -->
+
+
+
+
+<!-- PATCH: Chart tab — plain left-mouse drag now pans vertically too (not just
+     horizontally), matching the Flip Pairs grab-and-pan feel. No Ctrl/Shift
+     needed. Reuses the existing horizontal-drag state (_isDragging) from
+     navInit() without modifying it. -->
+
+
+
+<!-- PATCH: Grab-and-pan (left-mouse drag, up/down AND left/right) for Trade Log,
+     Price Summary, Level Aggregator, LA Pro, Regime Engine, and Reviewer —
+     same behavior as the Flip Pairs tab. Skips clicks on inputs/selects/buttons
+     and on any existing "drag to resize" handle so it never fights column
+     resizers or panel dividers. -->
+
+
+
+
+<!-- PATCH: LA Pro — live row-by-row rebuild during Simulation.
+     Root cause: the active replay tick loop (renderAllLinked) tries to call
+     laRender()/laProRender() every tick, but neither function exists anywhere
+     in this file — only laRebuild() (LA Pro's real render function) does. So
+     those calls were silent no-ops (guarded by typeof checks), meaning LA Pro
+     never refreshed automatically during Simulation like Chart and Flip Pairs
+     do. It only ever updated via older tab-specific code gated behind "is LA
+     Pro the active tab right now" checks, or when the Rebuild button was
+     clicked by hand — so it looked frozen/stale, or jumped straight to a full
+     snapshot instead of building candle-by-candle.
+     Fix: watch the replay position (_rpIdx / _rpBarN) independently and call
+     the real laRebuild() whenever it changes while a replay is active or
+     paused, so LA Pro updates every tick regardless of which tab is open. -->
+
+
+
+<!-- PATCH: Candle Summary — Hit_ID / Lift_ID correction.
+     Root cause: CS_ALL_COLS reads bar.totalHitId / bar.totalLiftId, but the
+     active bar builder only ever set bar.totalHitTrdId / bar.totalLiftTrdId
+     (name mismatch), so those two Candle Summary cells always rendered 0/blank
+     regardless of the actual data. On top of that, the bar builder's own
+     Hit/Lift side classification (tick-arrow → bid/ask proximity → aggr as a
+     last resort) differs from Price Summary's classification (aggr only:
+     BID/SELL = Hit, ASK/BUY = Lift), so simply renaming the field would still
+     not match Price Summary's numbers.
+     Fix: recompute totalHitId/totalLiftId on every bar using the exact same
+     aggr-based rule and trdIdDiff field Price Summary uses, so Candle Summary
+     always agrees with the Price Summary tab. -->
+
+
+
+<!-- PATCH: harden _currentIntervalRows()/dtRows() during Simulation so Price
+     Summary, Level Aggregator and LA Pro can never fall back to a fully-built
+     historical bar (e.g. from a prior "BUILD CANDLES" click) while a replay
+     is actively running or paused. Without this gate, if the in-progress
+     bar's tick buffer is ever momentarily empty, the shared fallback reads
+     Trade Log's cached bars instead — which, after Build Candles has run, are
+     already fully built — showing complete data instead of building row by
+     row like Chart and Flip Pairs. This wraps whatever the last-registered
+     _currentIntervalRows/dtRows is, so it stays compatible with the rest of
+     the file's layered patches. -->
+
+
+
+<!-- PATCH: Save History button next to Clear (shared toolbar — always visible,
+     not tied to the Price Summary tab being active).
+     Exports EVERY historical interval/candle in the loaded data as its own
+     row (one row per bar, oldest → newest), in a single click. Defaults to
+     ALL loaded ticks — the app's own "date filter active" state is NOT used
+     to decide this, because it gets silently overwritten to match whatever's
+     currently paged in Trade Log's own navigation (e.g. just the last 10
+     bars), not necessarily anything the user deliberately chose. If the
+     Start/End fields currently show a narrower window than the full loaded
+     file, the button asks once whether to export everything or just that
+     narrower window. Each row also carries that candle's Open/High/Low/Close.
+     It works by temporarily feeding each historical bar's ticks through the
+     real sumRender() (so the exported numbers are guaranteed to match what
+     Price Summary would show for that bar) and scraping the resulting
+     TOTALS row, then restoring the live view afterward. -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tensorflow/4.22.0/tf.min.js"></script>
+
+
+
+
+<!-- ============================================================
+     PATCH: Liquidity Sweep Hunter — new tab, chart markers, Trade Log alerts
+     Guard: window.__SWEEP_HUNTER_V1__
+     ============================================================ -->
+
+
+
+
+<!-- ============================================================
+     PATCH: McGinley Agent Bot — new tab, live agent-loop state machine,
+     trade log, summary stats, equity curve (JS port of mcginley_agent_bot.py)
+     Guard: window.__MCGINLEY_BOT_V1__
+     ============================================================ -->
+
+
+
+  <script src="script.js?v=20261008-professional-candles-v1"></script>
+<script src="taq-candle-time-replay-v31.js?v=20261008-gold-db-price-v1"></script>
+  <script src="../regime-export-core.js?v=20260918-v7"></script>
+  <script src="../tp-engine-core.js?v=20260918-v7"></script>
+  <script src="../tp-engine.js?v=20260918-v7"></script>
+  <script src="../autosave.js?v=20260918-v7"></script>
+  <script src="../orderflow-db-adapter.js?v=20260918-v7"></script>
+</body>
+</html>

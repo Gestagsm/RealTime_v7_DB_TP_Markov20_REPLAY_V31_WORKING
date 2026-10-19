@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <meta name="description" content="ITR Order Flow standalone administration portal">
+  <title>ITR Order Flow · Admin</title>
+  <link rel="stylesheet" href="/admin.css">
+  <script src="/admin.js" defer></script>
+</head>
+<body>
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+  <main class="shell">
+    <section id="login-view" class="login-layout" hidden>
+      <div class="brand-panel">
+        <div class="brand-mark">ITR</div>
+        <p class="eyebrow">ORDER FLOW CONTROL PLANE</p>
+        <h1>One secure place to manage your order flow platform.</h1>
+        <p class="subtle">Monitor the backend API, PostgreSQL market history, the drop-folder watcher and integrations, independently from the trading pages.</p>
+        <div class="security-note"><span class="secure-icon">◆</span><span>Administrator access is isolated from the order flow frontend.</span></div>
+      </div>
+      <form id="login-form" class="login-card">
+        <p class="eyebrow">ADMINISTRATOR SIGN IN</p>
+        <h2>Welcome back</h2>
+        <p class="subtle">Sign in with the credentials configured for this admin service.</p>
+        <label for="username">Username or email</label><input id="username" name="username" autocomplete="username" required>
+        <label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required>
+        <button class="primary" type="submit">Sign in <span aria-hidden="true">→</span></button>
+        <p id="login-error" class="error" role="alert"></p>
+        <small class="subtle">Use HTTPS through a trusted reverse proxy before remote access.</small>
+      </form>
+    </section>
+
+    <section id="dashboard-view" hidden>
+      <header class="topbar">
+        <a class="wordmark" href="/" aria-label="ITR admin home"><span class="mark-small">I</span><span>ITR <b>ORDER FLOW ADMIN</b></span></a>
+        <div class="top-right"><span id="connection" class="status"><i></i> Connecting</span><span id="admin-user" class="user-chip"></span><button id="logout" class="quiet-button" type="button">Sign out</button></div>
+      </header>
+      <nav class="portal-nav" aria-label="Admin sections">
+        <button class="nav-item active" data-view="overview" type="button">Overview</button>
+        <button class="nav-item" data-view="imports" type="button">Imports</button>
+        <button class="nav-item" data-view="watcher" type="button">Watcher</button>
+        <button class="nav-item" data-view="database" type="button">Database</button>
+      <button class="nav-item" data-view="backups" type="button">Backups</button>
+        <button class="nav-item" data-view="system" type="button">Backend &amp; config</button>
+        <button class="nav-item" data-view="activity" type="button">Activity log</button>
+        <button class="nav-item" data-view="profile" type="button">Profile</button>
+        <button class="nav-item" data-view="settings" type="button">API settings</button>
+      </nav>
+      <section id="view-overview" class="portal-view">
+      <div class="page-heading"><div><p class="eyebrow">PLATFORM OPERATIONS</p><h1>Administration</h1><p class="subtle">A dedicated control center, separate from the order flow pages.</p></div><button id="refresh" class="quiet-button" type="button">↻ &nbsp;Refresh</button></div>
+      <section class="metrics" aria-label="Platform status">
+        <article class="metric"><div class="metric-label">BACKEND API</div><strong id="backend-state">Loading</strong><small id="backend-detail">--</small></article>
+        <article class="metric"><div class="metric-label">POSTGRESQL</div><strong id="database-state">Loading</strong><small id="database-detail">--</small></article>
+        <article class="metric"><div class="metric-label">MARKET ROWS</div><strong id="rows-state">Loading</strong><small id="rows-detail">--</small></article>
+        <article class="metric"><div class="metric-label">FOLDER WATCHER</div><strong id="watcher-state">Loading</strong><small id="watcher-detail">--</small></article>
+      </section>
+
+      <section class="section">
+        <div class="section-heading"><div><p class="eyebrow">DIAGNOSTICS</p><h2>System health</h2></div><span id="health-summary" class="subtle"></span></div>
+        <section class="metrics five" aria-label="System health">
+          <article class="metric"><div class="metric-label">FRONTEND (8080)</div><strong id="h-frontend">--</strong><small id="h-frontend-d">--</small></article>
+          <article class="metric"><div class="metric-label">DB LATENCY</div><strong id="h-db">--</strong><small id="h-db-d">--</small></article>
+          <article class="metric"><div class="metric-label">CPU</div><strong id="h-cpu">--</strong><small id="h-cpu-d">--</small></article>
+          <article class="metric"><div class="metric-label">MEMORY</div><strong id="h-mem">--</strong><small id="h-mem-d">--</small></article>
+          <article class="metric"><div class="metric-label">DISK (PROJECT DRIVE)</div><strong id="h-disk">--</strong><small id="h-disk-d">--</small></article>
+        </section>
+      </section>
+
+      <section class="section">
+        <div class="section-heading"><div><p class="eyebrow">CONNECTED SERVICES</p><h2>AI &amp; broker integrations</h2></div><span class="badge neutral">Provider selection required</span></div>
+        <div class="integration-grid">
+          <article class="integration"><div class="integration-icon ai-icon">✳</div><div><h3>AI intelligence</h3><span id="ai-integration-state" class="badge neutral">Not configured</span></div><p id="ai-integration-detail">Choose an AI provider and define its role before enabling any AI-assisted decisions.</p><small>Credentials stay on the admin backend; provider adapters are not active.</small></article>
+          <article class="integration"><div class="integration-icon broker-icon">⌁</div><div><h3>Forex trader API</h3><span id="broker-integration-state" class="badge neutral">Not configured</span></div><p id="broker-integration-detail">No external broker or order route is connected to this platform.</p><small>Broker adapters should be validated with a demo account and explicit risk limits.</small></article>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading"><div><p class="eyebrow">MARKET DATA</p><h2>Datasets in PostgreSQL</h2></div><span id="dataset-summary" class="subtle"></span></div>
+        <div id="dataset-list" class="feed-grid"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading"><div><p class="eyebrow">INGEST HISTORY</p><h2>Recent imports</h2></div></div>
+        <div id="import-list" class="feed-grid"><div class="skeleton"></div></div>
+      </section>
+      <p id="dashboard-error" class="error" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="view-imports" class="portal-view" hidden>
+        <div class="page-heading"><div><p class="eyebrow">DATA MANAGEMENT</p><h1>Imports</h1><p class="subtle">Browse stored replay imports and remove ones you no longer need.</p></div>
+          <div class="inline-controls"><select id="imports-section" aria-label="Section"><option value="">All sections</option><option value="gcv">GCV</option><option value="taq-pro">TAQ Pro</option><option value="tas-regime">TAS Regime</option></select><button id="imports-refresh" class="quiet-button" type="button">↻ &nbsp;Refresh</button></div></div>
+        <div class="table-card"><table class="data-table"><thead><tr><th>File</th><th>Section</th><th>Imported</th><th>Data range</th><th class="num">Rows</th><th class="num">Bars</th><th></th></tr></thead><tbody id="imports-body"></tbody></table></div>
+        <p id="imports-message" class="form-message" role="status"></p>
+      </section>
+
+      <section id="view-watcher" class="portal-view" hidden>
+        <div class="page-heading"><div><p class="eyebrow">FOLDER INGEST</p><h1>Watcher</h1><p class="subtle">Files dropped by the external platform, what was ingested, and what failed.</p></div><button id="watcher-refresh" class="quiet-button" type="button">↻ &nbsp;Refresh</button></div>
+        <div id="watcher-notice" class="notice" hidden></div>
+        <div id="watcher-groups"></div>
+        <p id="watcher-message" class="form-message" role="status"></p>
+      </section>
+
+      <section id="view-database" class="portal-view" hidden>
+        <div class="page-heading"><div><p class="eyebrow">POSTGRESQL</p><h1>Database</h1><p class="subtle">Storage used by the order flow platform. Row counts are planner estimates, so this page stays fast.</p></div><button id="database-refresh" class="quiet-button" type="button">↻ &nbsp;Refresh</button></div>
+        <section class="metrics three"><article class="metric"><div class="metric-label">DATABASE</div><strong id="db-name">--</strong><small id="db-version">--</small></article><article class="metric"><div class="metric-label">TOTAL SIZE</div><strong id="db-size">--</strong><small>Whole database on disk</small></article><article class="metric"><div class="metric-label">PLATFORM TABLES</div><strong id="db-tables">--</strong><small>public.itr_* and replay_v31.*</small></article></section>
+        <div class="table-card"><table class="data-table"><thead><tr><th>Table</th><th class="num">Est. rows</th><th class="num">Size</th><th></th></tr></thead><tbody id="database-body"></tbody></table></div>
+        <p class="help-text">ANALYZE refreshes the planner statistics for one table. It is safe, read-only for your data, and can take a while on large tables.</p>
+        <p id="database-message" class="form-message" role="status"></p>
+        <div class="section-heading act-heading"><div><p class="eyebrow">LIVE</p><h2>Active connections</h2></div></div>
+        <div class="table-card"><table class="data-table"><thead><tr><th>PID</th><th>State</th><th>Application</th><th>Query started</th><th>Query</th></tr></thead><tbody id="activity-conn-body"></tbody></table></div>
+      </section>
+
+      <section id="view-backups" class="portal-view" hidden>
+        <div class="page-heading"><div><p class="eyebrow">DATA PROTECTION</p><h1>Backups</h1><p class="subtle">Create, download and remove history backups of the replay data, the whole database or the backend configuration.</p></div><button id="backup-refresh" class="quiet-button" type="button">↻ &nbsp;Refresh</button></div>
+        <section class="metrics three"><article class="metric"><div class="metric-label">BACKUPS</div><strong id="backup-count">--</strong><small id="backup-dir">--</small></article><article class="metric"><div class="metric-label">FREE DISK</div><strong id="backup-free">--</strong><small>Where backups are stored</small></article><article class="metric"><div class="metric-label">NEW BACKUP</div><div class="inline-controls"><select id="backup-scope"></select><button id="backup-create" class="primary compact" type="button">Create backup</button></div><small id="backup-job">No backup run in this session.</small></article></section>
+        <div id="backup-notice" class="notice" hidden></div>
+        <div class="table-card"><table class="data-table"><thead><tr><th>File</th><th>Type</th><th>Created</th><th class="num">Size</th><th></th></tr></thead><tbody id="backup-body"></tbody></table></div>
+        <p class="help-text">Database backups use pg_dump (custom format) and are verified with pg_restore --list. Restore (history and config) is done from the Restore button; it requires typing RESTORE, needs the backend stopped, takes a safety backup first and rolls back on failure. Full-database backups are restored from the command line: pg_restore --clean --if-exists --no-owner -d itr_market_data &lt;file&gt;. Configuration backups contain credentials; keep them private.</p>
+        <p id="backup-message" class="form-message" role="status"></p>
+      </section>
+
+      <section id="view-system" class="portal-view" hidden>
+        <div class="page-heading"><div><p class="eyebrow">SERVICE CONTROL</p><h1>Backend &amp; configuration</h1><p class="subtle">Start, stop and configure the order flow backend (backend/.env).</p></div><button id="system-refresh" class="quiet-button" type="button">↻ &nbsp;Refresh</button></div>
+        <div class="settings-grid">
+          <article class="settings-card"><p class="eyebrow">BACKEND SERVICE</p><h2 id="backend-service-state">--</h2><p id="backend-service-detail" class="help-text">--</p>
+            <div class="form-actions"><button id="backend-start" class="primary compact" type="button">Start</button><button id="backend-restart" class="quiet-button" type="button">Restart</button><button id="backend-stop" class="quiet-button danger" type="button">Stop</button></div>
+            <p id="backend-message" class="form-message" role="status"></p>
+            <p class="eyebrow log-title">BACKEND LOG</p><pre id="backend-log" class="log-box">No output captured yet.</pre>
+          </article>
+          <article class="settings-card"><p class="eyebrow">BACKEND SETTINGS</p><h2>Environment</h2>
+            <form id="config-form" class="form-grid"><div id="config-fields"></div><div class="form-actions"><button class="primary compact" type="submit">Save settings</button><button id="config-restore" class="quiet-button" type="button">Restore previous</button><span id="config-message" class="form-message" role="status"></span></div></form>
+            <p class="help-text">Changes are written to backend/.env and apply after the backend is restarted. Database credentials are not editable here.</p>
+          </article>
+        </div>
+        <article class="settings-card admin-info"><p class="eyebrow">ADMIN SERVICE</p><div id="admin-info" class="info-grid"></div></article>
+      </section>
+
+      <section id="view-activity" class="portal-view" hidden>
+        <div class="page-heading"><div><p class="eyebrow">ACCOUNTABILITY</p><h1>Activity log</h1><p class="subtle">Sign-ins, profile changes, backend actions, configuration and import deletions.</p></div><div class="inline-controls"><a class="quiet-button link-button" href="/api/audit.csv" download>↓ &nbsp;Export CSV</a><button id="activity-refresh" class="quiet-button" type="button">↻ &nbsp;Refresh</button></div></div>
+        <div class="table-card"><table class="data-table"><thead><tr><th>Time</th><th>User</th><th>Action</th><th>Detail</th></tr></thead><tbody id="activity-body"></tbody></table></div>
+      </section>
+
+      <section id="view-profile" class="portal-view" hidden>
+        <div class="page-heading"><div><p class="eyebrow">ACCOUNT SECURITY</p><h1>Profile</h1><p class="subtle">Update the administrator sign-in used by this standalone portal.</p></div></div>
+        <div class="settings-grid">
+          <article class="settings-card">
+            <p class="eyebrow">ADMINISTRATOR ACCOUNT</p><h2>Profile &amp; password</h2>
+            <form id="profile-form" class="form-grid">
+              <label for="profile-username">Username or email</label><input id="profile-username" autocomplete="username" minlength="3" maxlength="64" required>
+              <label for="profile-current-password">Current password <span class="required">*</span></label><input id="profile-current-password" type="password" autocomplete="current-password" required>
+              <label for="profile-new-password">New password</label><input id="profile-new-password" type="password" autocomplete="new-password" minlength="6" maxlength="256" placeholder="At least 6 characters · leave empty to keep current">
+              <label for="profile-confirm-password">Confirm new password</label><input id="profile-confirm-password" type="password" autocomplete="new-password" minlength="6" maxlength="256" placeholder="Repeat the new password">
+              <div class="form-actions"><button class="primary compact" type="submit">Save profile</button><span id="profile-message" class="form-message" role="status"></span></div>
+            </form>
+            <p class="help-text">Saving changes revokes other admin sessions and keeps this browser signed in.</p>
+          </article>
+          <aside class="settings-card security-card"><p class="eyebrow">SECURITY</p><h2>Session protection</h2>
+            <ul><li>Password is stored as a salted, slow hash.</li><li>Provider secrets are encrypted at rest using the admin password.</li><li>Sign-in is rate-limited; session cookies are HttpOnly and SameSite.</li></ul>
+            <p class="eyebrow log-title">ACTIVE SESSIONS <span id="session-timeout" class="key-status"></span></p>
+            <div id="session-list" class="session-list"></div>
+            <div class="form-actions"><button id="revoke-others" class="quiet-button danger" type="button">Sign out other sessions</button><span id="session-message" class="form-message" role="status"></span></div>
+            <p class="warning-note">Keep the portal on this trusted machine. Use HTTPS through a trusted proxy before remote access.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="view-settings" class="portal-view" hidden>
+        <div class="page-heading"><div><p class="eyebrow">PLATFORM CONFIGURATION</p><h1>API settings</h1><p class="subtle">Manage provider selections and securely store credentials for later adapter setup.</p></div></div>
+        <div class="notice"><b>Configuration only · not connected</b><span>Saving keys does not activate AI features, broker connectivity or orders. Provider adapters must be implemented and explicitly enabled separately.</span></div>
+        <form id="settings-form">
+          <div class="settings-grid">
+            <article class="settings-card"><div class="settings-title"><div><p class="eyebrow">AI PROVIDER</p><h2>Artificial intelligence</h2></div><span class="badge neutral">Adapter not installed</span></div>
+              <label for="ai-provider">Provider</label><select id="ai-provider"><option value="none">Not configured</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="google">Google Gemini</option></select>
+              <label for="ai-model">Model identifier</label><input id="ai-model" maxlength="120" placeholder="Provider model name">
+              <label for="ai-api-key">API key <span id="ai-key-status" class="key-status"></span></label><input id="ai-api-key" type="password" autocomplete="new-password" maxlength="4096" placeholder="Enter a key to replace the stored key">
+              <label class="check-row"><input id="ai-clear-key" type="checkbox"> Remove stored AI API key</label>
+            </article>
+            <article class="settings-card"><div class="settings-title"><div><p class="eyebrow">FOREX TRADER API</p><h2>Forex broker</h2></div><span class="badge neutral">Adapter not installed</span></div>
+              <label for="broker-provider">Provider</label><select id="broker-provider"><option value="none">Not configured</option><option value="oanda">OANDA</option><option value="interactive-brokers">Interactive Brokers</option><option value="metatrader5">MetaTrader 5</option></select>
+              <label for="broker-environment">Environment</label><select id="broker-environment"><option value="demo">Demo / practice</option><option value="live">Live · not enabled</option></select>
+              <label for="broker-account">Account identifier</label><input id="broker-account" maxlength="160" autocomplete="off" placeholder="Optional account ID">
+              <label for="broker-api-key">API key <span id="broker-key-status" class="key-status"></span></label><input id="broker-api-key" type="password" autocomplete="new-password" maxlength="4096" placeholder="Enter a key to replace the stored key">
+              <label for="broker-access-token">Access token <span id="broker-token-status" class="key-status"></span></label><input id="broker-access-token" type="password" autocomplete="new-password" maxlength="4096" placeholder="Enter a token to replace the stored token">
+              <label class="check-row"><input id="broker-clear-key" type="checkbox"> Remove stored broker API key</label>
+              <label class="check-row"><input id="broker-clear-token" type="checkbox"> Remove stored broker access token</label>
+            </article>
+          </div>
+          <div class="form-actions settings-actions"><button class="primary compact" type="submit">Save API settings</button><span id="settings-message" class="form-message" role="status"></span></div>
+        </form>
+      </section>
+      <footer><span>ITR ORDER FLOW ADMIN</span><span>Isolated admin service · <span id="last-updated">Awaiting data</span></span></footer>
+    </section>
+  </main>
+</body>
+</html>

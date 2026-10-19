@@ -1,0 +1,38 @@
+# Local credentials and environment files
+.env
+.env.*
+**/.env
+**/.env*
+
+# Dependencies and generated runtime state
+**/node_modules/
+**/.data/
+**/logs/
+**/__pycache__/
+**/.pytest_cache/
+**/*.log
+**/backups/
+**/*BACKUP*
+**/*backup*
+**/*.before_*
+**/*.py[cod]
+**/coverage/
+**/dist/
+**/build/
+
+# Local market data, Excel files, database exports, and archives
+**/data/
+**/Data_Files/
+**/excel-autosave/
+**/*.csv
+**/*.xlsx
+**/*.xls
+**/*.parquet
+**/*.dump
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+**/*.zip
+
+# Locally selected Excel sources
+/bridge/orderflow_last_sources.json
