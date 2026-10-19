@@ -14941,9 +14941,11 @@ function _itrStreamLiveTicks(rows){
 (function(){
   "use strict";
   var days=[];
+  var maxRows=300000;
   var tzName=function(){ return typeof _itrTzName==='function'?_itrTzName():'UTC'; };
   var $=function(id){ return document.getElementById(id); };
   var fmt=function(n){ return Number(n).toLocaleString(); };
+  var tickLabel=function(d){ return d.ticksTruncated?fmt(maxRows)+'+':fmt(d.ticks); };
   var pad=function(n){ return String(n).padStart(2,'0'); };
   var local=function(iso){
     var d=new Date(typeof _itrTzShiftMs==='function'?_itrTzShiftMs(new Date(iso).getTime()):iso);
@@ -14957,11 +14959,12 @@ function _itrStreamLiveTicks(rows){
 
   function render(data){
     days=data.days||[];
+    maxRows=Number(data.maxRangeRows)||maxRows;
     var sel=$('cov-days');
     if(sel){
       var current=sel.value;
       sel.innerHTML='<option value="">— choose a day —</option>'+days.map(function(d){
-        return '<option value="'+d.day+'">'+d.day+' · '+fmt(d.ticks)+(d.fits?'':' ⚠')+'</option>';
+        return '<option value="'+d.day+'">'+d.day+' · '+tickLabel(d)+(d.fits?'':' ⚠')+'</option>';
       }).join('');
       if(current) sel.value=current;
     }
@@ -14994,7 +14997,7 @@ function _itrStreamLiveTicks(rows){
     s.value=day+'T00:00:00';
     e.value=day+'T23:59:59';
     if($('cov-days')) $('cov-days').value=day;
-    setWarn(d.fits?'':fmt(d.ticks)+' ticks on '+day+' exceeds the '+fmt(300000)+'-row load limit. Use a shorter window (AM / PM or a custom time).');
+    setWarn(d.fits?'':tickLabel(d)+' ticks on '+day+' exceeds the '+fmt(maxRows)+'-row load limit. Use a shorter window (AM / PM or a custom time).');
     if(typeof trSyncFromDT==='function') trSyncFromDT();
     var b=$('btn-build'); if(b) setTimeout(function(){ b.click(); },50);
   }

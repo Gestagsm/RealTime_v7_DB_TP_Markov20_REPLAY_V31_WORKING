@@ -191,16 +191,41 @@ async function tickCoverage(section, { symbol = DEFAULT_SYMBOL, timeZone = 'UTC'
   try {
     await client.query('SET statement_timeout = 30000');
     const days = await client.query(`
-      SELECT to_char(event_time AT TIME ZONE $3, 'YYYY-MM-DD') AS day, COUNT(*)::int AS ticks,
-             MIN(event_time) AS first, MAX(event_time) AS last
-      FROM public.itr_market_ticks
-      WHERE dataset = $1 AND symbol = $2 AND event_time >= $4 AND event_time < $5
-      GROUP BY 1 ORDER BY 1 DESC
-    `, [dataset, symbol, timeZone, lower, upper]);
+      WITH calendar AS (
+        SELECT generated.day_value::date AS day_value
+        FROM generate_series(
+          (($4::timestamptz AT TIME ZONE $3)::date)::timestamp,
+          ((($5::timestamptz - interval '1 microsecond') AT TIME ZONE $3)::date)::timestamp,
+          interval '1 day'
+        ) AS generated(day_value)
+      )
+      SELECT to_char(calendar.day_value, 'YYYY-MM-DD') AS day,
+             bounded.ticks,
+             bounded.ticks > $6 - 1 AS "ticksTruncated"
+      FROM calendar
+      CROSS JOIN LATERAL (
+        SELECT COUNT(*)::int AS ticks
+        FROM (
+          SELECT 1
+          FROM public.itr_market_ticks
+          WHERE dataset = $1 AND symbol = $2
+            AND event_time >= (calendar.day_value::timestamp AT TIME ZONE $3)
+            AND event_time < ((calendar.day_value::timestamp + interval '1 day') AT TIME ZONE $3)
+          LIMIT $6
+        ) sampled
+      ) bounded
+      WHERE bounded.ticks > 0
+      ORDER BY calendar.day_value DESC
+    `, [dataset, symbol, timeZone, lower, upper, MAX_RANGE_ROWS + 1]);
     return {
       first, last, timeZone, maxRangeRows: MAX_RANGE_ROWS,
       from: lower, to: upper,
-      days: days.rows.map(row => ({ day: row.day, ticks: row.ticks, first: row.first, last: row.last, fits: row.ticks <= MAX_RANGE_ROWS }))
+      days: days.rows.map(row => ({
+        day: row.day,
+        ticks: row.ticks,
+        ticksTruncated: row.ticksTruncated,
+        fits: row.ticks <= MAX_RANGE_ROWS,
+      }))
     };
   } finally {
     try { await client.query('RESET statement_timeout') } catch { /* connection is released anyway */ }
