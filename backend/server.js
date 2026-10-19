@@ -6,6 +6,7 @@ const database = require('./lib/postgres');
 
 const app = express();
 const PORT = Number(process.env.PORT) || 4001;
+const HOST = process.env.HOST || '127.0.0.1';
 const JSON_LIMIT = process.env.JSON_LIMIT || '100mb';
 
 // IMPORTANT: cors({origin:['*']}) does NOT mean "allow all" in the cors package.
@@ -20,6 +21,7 @@ app.use(cors({
   exposedHeaders: ['X-Market-Data-Source', 'X-Market-Data-Rows', 'X-Market-Data-Truncated', 'X-Market-Data-Limit'],
 }));
 app.use(express.json({ limit: JSON_LIMIT }));
+app.use('/api', require('./lib/apiAuth').createApiAuth());
 
 let postgresReady = false;
 function requirePostgres(req, res, next) {
@@ -56,7 +58,7 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
-app.listen(PORT, () => console.log(`[ISKRU TRADE ROBOT PRO backend] API listening on port ${PORT}`));
+app.listen(PORT, HOST, () => console.log(`[ISKRU TRADE ROBOT PRO backend] API listening on ${HOST}:${PORT}`));
 
 let watcherStarted = false;
 let databaseExporterStarted = false;

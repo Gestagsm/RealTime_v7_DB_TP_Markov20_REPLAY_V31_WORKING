@@ -42,10 +42,11 @@ jobs:
           value = os.environ.get("ITR_API_BASE", "").strip().rstrip("/")
           if value:
               parsed = urlparse(value)
-              if parsed.scheme != "https" or not parsed.netloc or parsed.path not in ("", "/") or parsed.query or parsed.fragment:
-                  raise SystemExit("ITR_API_BASE must be an HTTPS origin, e.g. https://api.example.com")
+              if parsed.scheme != "https" or not parsed.netloc or parsed.query or parsed.fragment or ".." in parsed.path.split("/"):
+                  raise SystemExit("ITR_API_BASE must be an HTTPS origin with an optional path prefix.")
           with open("frontend/api-config.js", "w", encoding="utf-8") as config:
               config.write("window.ITR_API_BASE_OVERRIDE = " + json.dumps(value) + ";\n")
+              config.write('window.ITR_API_USERNAME = "realtime-web";\n')
           if not value:
               print("ITR_API_BASE is not set; the Pages UI will show a configuration error for backend requests.")
           PY

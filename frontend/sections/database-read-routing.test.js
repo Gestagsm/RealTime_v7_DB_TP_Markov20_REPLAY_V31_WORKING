@@ -25,19 +25,28 @@ test('IIS proxies API requests to this project’s configured PostgreSQL backend
     proxyConfig,
     new RegExp(`url="http://127\\.0\\.0\\.1:${configuredPort[1]}/api/\\{R:1\\}"`)
   );
+  assert.match(
+    proxyConfig,
+    new RegExp(
+      `<match url="\\^terminal-api/api/\\(.*\\)" \\/>[\\s\\S]*?<action type="Rewrite" url="http://127\\.0\\.0\\.1:${configuredPort[1]}/api/\\{R:1\\}"`
+    )
+  );
 });
 
 test('GitHub Pages loads the configured Windows Server API origin in every section', () => {
   for (const section of ['pro-single-display', 'taq-pro', 'tas-regime']) {
     const html = read(`frontend/sections/${section}/index.html`);
     assert.match(html, /<script src="\.\.\/\.\.\/api-config\.js"><\/script>/);
+    assert.match(html, /<script src="\.\.\/\.\.\/api-auth\.js"><\/script>/);
     const script = read(`frontend/sections/${section}/script.js`);
     assert.match(script, /ITR_API_BASE_OVERRIDE/);
     assert.match(script, /Backend URL is not configured/);
   }
   assert.match(pagesWorkflow, /vars\.ITR_API_BASE/);
-  assert.match(pagesWorkflow, /ITR_API_BASE must be an HTTPS origin/);
+  assert.match(pagesWorkflow, /ITR_API_BASE must be an HTTPS origin with an optional path prefix/);
   assert.match(backendConfig, /https:\/\/gestagsm\.github\.io/);
+  assert.match(backendConfig, /API_USERNAME=realtime-web/);
+  assert.match(backendConfig, /API_PASSWORD=replace_with_a_long_random_password/);
 });
 
 test('backend maps each UI section to its matching shared market dataset', () => {
