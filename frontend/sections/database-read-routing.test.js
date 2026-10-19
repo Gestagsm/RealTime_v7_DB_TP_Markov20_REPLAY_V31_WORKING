@@ -10,6 +10,7 @@ const proxyConfig = read('frontend/web.config');
 const backendConfig = read('backend/.env.example');
 const backendServer = read('backend/server.js');
 const postgres = read('backend/lib/postgres.js');
+const pagesWorkflow = read('.github/workflows/deploy-pages.yml');
 const headersBySection = {
   gcv: ['TIMEACT NS', 'Tick', 'Last', 'Bid', 'Ask', 'B Size', 'A Size', 'AGGRESSIVE ORD1', 'TRADE_ID'],
   'taq-pro': ['Timestamp', 'PRCTCK_1', 'BID', 'ASK', 'BIDSIZE', 'ASKSIZE', 'SEQNUM', 'RTL', 'QUALIFIERS'],
@@ -24,6 +25,19 @@ test('IIS proxies API requests to this project’s configured PostgreSQL backend
     proxyConfig,
     new RegExp(`url="http://127\\.0\\.0\\.1:${configuredPort[1]}/api/\\{R:1\\}"`)
   );
+});
+
+test('GitHub Pages loads the configured Windows Server API origin in every section', () => {
+  for (const section of ['pro-single-display', 'taq-pro', 'tas-regime']) {
+    const html = read(`frontend/sections/${section}/index.html`);
+    assert.match(html, /<script src="\.\.\/\.\.\/api-config\.js"><\/script>/);
+    const script = read(`frontend/sections/${section}/script.js`);
+    assert.match(script, /ITR_API_BASE_OVERRIDE/);
+    assert.match(script, /Backend URL is not configured/);
+  }
+  assert.match(pagesWorkflow, /vars\.ITR_API_BASE/);
+  assert.match(pagesWorkflow, /ITR_API_BASE must be an HTTPS origin/);
+  assert.match(backendConfig, /https:\/\/gestagsm\.github\.io/);
 });
 
 test('backend maps each UI section to its matching shared market dataset', () => {

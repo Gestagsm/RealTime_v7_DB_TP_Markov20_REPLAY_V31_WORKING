@@ -30,6 +30,26 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
+      - name: Configure Windows Server API URL
+        env:
+          ITR_API_BASE: ${{ vars.ITR_API_BASE }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from urllib.parse import urlparse
+
+          value = os.environ.get("ITR_API_BASE", "").strip().rstrip("/")
+          if value:
+              parsed = urlparse(value)
+              if parsed.scheme != "https" or not parsed.netloc or parsed.path not in ("", "/") or parsed.query or parsed.fragment:
+                  raise SystemExit("ITR_API_BASE must be an HTTPS origin, e.g. https://api.example.com")
+          with open("frontend/api-config.js", "w", encoding="utf-8") as config:
+              config.write("window.ITR_API_BASE_OVERRIDE = " + json.dumps(value) + ";\n")
+          if not value:
+              print("ITR_API_BASE is not set; the Pages UI will show a configuration error for backend requests.")
+          PY
+
       - name: Upload frontend
         uses: actions/upload-pages-artifact@v3
         with:

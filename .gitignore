@@ -3,6 +3,7 @@
 .env.*
 **/.env
 **/.env*
+!**/.env.example
 
 # Dependencies and generated runtime state
 **/node_modules/

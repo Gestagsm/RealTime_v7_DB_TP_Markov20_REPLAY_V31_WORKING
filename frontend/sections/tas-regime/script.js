@@ -14154,6 +14154,9 @@ function _itrResolveApiBase(){
 const ITR_API_BASE=_itrResolveApiBase();
 
 async function _itrFetchChecked(url,options){
+  if(!ITR_API_BASE && /\.github\.io$/i.test(location.hostname)){
+    throw new Error('Backend URL is not configured. Set the GitHub Actions variable ITR_API_BASE to your Windows Server HTTPS origin.');
+  }
   let res;
   try{ res=await fetch(url,options); }
   catch(e){
