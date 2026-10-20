@@ -6937,6 +6937,7 @@ function setupFlipButtons(){
   });
 }
 function setupTasSidebar(){
+  if(ITR_SECTION_ID==='gcv') return;
   const sb=document.getElementById('sb-scroll'); if(!sb || document.getElementById('tas-side-time-block')) return;
   document.querySelectorAll('.rp-section').forEach(x=>x.style.display='none');
   const simHdr=[...sb.querySelectorAll('.sb-s')].find(x=>/Simulation/i.test(x.textContent));
