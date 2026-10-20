@@ -59,6 +59,7 @@ test('backend maps each UI section to its matching shared market dataset', () =>
 
 test('Pro Single Display shows the shared controls directly below Build Candles', () => {
   const html = read('frontend/sections/pro-single-display/index.html');
+  const script = read('frontend/sections/pro-single-display/script.js');
   const controls = [
     'id="btn-build"',
     'onclick="trNav(-1)"',
@@ -72,6 +73,9 @@ test('Pro Single Display shows the shared controls directly below Build Candles'
   assert.ok(positions.every(position => position >= 0), 'expected build, navigation, coverage, replay, and simulation controls');
   assert.deepEqual(positions, [...positions].sort((a, b) => a - b), 'shared controls should appear in the same vertical order as TAQ/TAS');
   assert.equal((html.match(/id="cov-days"/g) || []).length, 1, 'coverage controls should not be duplicated');
+  const tasSidebar = script.match(/function setupTasSidebar\(\)\{[\s\S]*?\n\}/);
+  assert.ok(tasSidebar, 'section-specific sidebar setup exists');
+  assert.match(tasSidebar[0], /if\(ITR_SECTION_ID==='gcv'\) return;/, 'Pro Single should retain its historical replay panel');
 });
 
 for (const [section, file] of [
